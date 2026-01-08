@@ -41,7 +41,6 @@ const App: React.FC = () => {
   const [newSlideUrl, setNewSlideUrl] = useState("");
   const [newCategoryName, setNewCategoryName] = useState("");
 
-  // Variant helper states
   const [newVarName, setNewVarName] = useState("");
   const [newVarPrice, setNewVarPrice] = useState<number>(0);
 
@@ -71,7 +70,9 @@ const App: React.FC = () => {
           menuBackground: ""
         },
         whatsappNumber: configData?.whatsapp_number || "51936494711",
-        socialMedia: configData?.social_media || { facebook: "", instagram: "", tiktok: "" }
+        socialMedia: configData?.social_media || { facebook: "", instagram: "", tiktok: "" },
+        paymentQr: configData?.payment_qr || "",
+        paymentName: configData?.payment_name || "Churre Malcriado"
       };
       setConfig(newConfig);
       setEditingConfig(JSON.parse(JSON.stringify(newConfig)));
@@ -163,7 +164,9 @@ const App: React.FC = () => {
         id: 1, 
         images: editingConfig.images,
         whatsapp_number: editingConfig.whatsappNumber,
-        social_media: editingConfig.socialMedia
+        social_media: editingConfig.socialMedia,
+        payment_qr: editingConfig.paymentQr,
+        payment_name: editingConfig.paymentName
       });
       if (!error) { setConfig(editingConfig); alert("¡Configuración Guardada!"); }
     } catch (err: any) { alert(`Error: ${err.message}`); }
@@ -176,7 +179,7 @@ const App: React.FC = () => {
   };
 
   const handleDeleteCategory = async (id: number | string) => {
-    if (confirm("¿Seguro que quieres borrar esta categoría? Los platos podrían quedar huérfanos.")) {
+    if (confirm("¿Seguro que quieres borrar esta categoría?")) {
       const { error } = await supabase.from('categories').delete().eq('id', id);
       if (!error) await loadData();
     }
@@ -253,20 +256,19 @@ const App: React.FC = () => {
           <div className="flex gap-2 bg-gray-100 p-1.5 rounded-2xl overflow-x-auto no-scrollbar max-w-full">
             <button onClick={() => setActiveAdminTab('products')} className={`whitespace-nowrap px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeAdminTab === 'products' ? 'bg-white text-[#e91e63] shadow-md' : 'text-gray-400'}`}>Platos</button>
             <button onClick={() => setActiveAdminTab('categories')} className={`whitespace-nowrap px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeAdminTab === 'categories' ? 'bg-white text-[#e91e63] shadow-md' : 'text-gray-400'}`}>Categorías</button>
-            <button onClick={() => setActiveAdminTab('design')} className={`whitespace-nowrap px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeAdminTab === 'design' ? 'bg-white text-[#e91e63] shadow-md' : 'text-gray-400'}`}>Redes / Logos</button>
+            <button onClick={() => setActiveAdminTab('design')} className={`whitespace-nowrap px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeAdminTab === 'design' ? 'bg-white text-[#e91e63] shadow-md' : 'text-gray-400'}`}>Redes / Pagos</button>
             <button onClick={() => setActiveAdminTab('slides')} className={`whitespace-nowrap px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeAdminTab === 'slides' ? 'bg-white text-[#e91e63] shadow-md' : 'text-gray-400'}`}>Carrusel</button>
           </div>
           <button onClick={() => setIsAdminOpen(false)} className="px-6 py-2.5 bg-black text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-800 transition-colors">Salir</button>
         </header>
 
         <main className="p-8 max-w-6xl mx-auto w-full">
-           {/* CATEGORIAS TAB */}
            {activeAdminTab === 'categories' && (
              <div className="max-w-xl mx-auto space-y-8 animate-fade-in-up">
                 <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-gray-100">
                    <h3 className="text-xl font-black mb-8 brand-font text-gray-800"><i className="fa-solid fa-layer-group mr-2 text-[#e91e63]"></i> Gestionar Categorías</h3>
                    <div className="flex gap-4 mb-8">
-                      <input className="flex-1 bg-gray-50 p-4 rounded-2xl outline-none font-bold text-sm" placeholder="Nueva Categoría (Ej: Postres)" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} />
+                      <input className="flex-1 bg-gray-50 p-4 rounded-2xl outline-none font-bold text-sm" placeholder="Nueva Categoría" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} />
                       <button onClick={handleAddCategory} className="bg-[#e91e63] text-white px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all">Añadir</button>
                    </div>
                    <div className="space-y-3">
@@ -281,19 +283,18 @@ const App: React.FC = () => {
              </div>
            )}
 
-           {/* DESIGN TAB */}
            {activeAdminTab === 'design' && (
              <div className="max-w-xl mx-auto space-y-8 animate-fade-in-up">
                 <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-gray-100">
-                   <h3 className="text-xl font-black mb-8 brand-font text-gray-800"><i className="fa-solid fa-camera-retro mr-2 text-[#e91e63]"></i> Logos y Contacto</h3>
+                   <h3 className="text-xl font-black mb-8 brand-font text-gray-800"><i className="fa-solid fa-credit-card mr-2 text-[#e91e63]"></i> Datos de Pago (Yape/Plin)</h3>
                    <div className="space-y-6">
                       <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                         <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Logo URL (Postimages)</label>
-                         <input className="w-full bg-white p-3 rounded-xl outline-none font-bold text-sm" value={editingConfig!.images.logo} onChange={e => setEditingConfig({...editingConfig!, images: {...editingConfig!.images, logo: e.target.value, menuLogo: e.target.value}})} />
+                         <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 block">URL Imagen QR (Postimages)</label>
+                         <input className="w-full bg-white p-3 rounded-xl outline-none font-bold text-sm" value={editingConfig!.paymentQr} onChange={e => setEditingConfig({...editingConfig!, paymentQr: e.target.value})} placeholder="https://i.ibb.co/..." />
                       </div>
                       <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                         <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 block">WhatsApp (Ej: 51936494711)</label>
-                         <input className="w-full bg-white p-3 rounded-xl outline-none font-bold text-sm" value={editingConfig!.whatsappNumber} onChange={e => setEditingConfig({...editingConfig!, whatsappNumber: e.target.value})} />
+                         <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Nombre del Titular</label>
+                         <input className="w-full bg-white p-3 rounded-xl outline-none font-bold text-sm" value={editingConfig!.paymentName} onChange={e => setEditingConfig({...editingConfig!, paymentName: e.target.value})} placeholder="Ej: Luis Miguel" />
                       </div>
                    </div>
                 </div>
@@ -302,16 +303,12 @@ const App: React.FC = () => {
                    <h3 className="text-xl font-black mb-8 brand-font text-gray-800"><i className="fa-solid fa-share-nodes mr-2 text-[#e91e63]"></i> Redes Sociales</h3>
                    <div className="space-y-6">
                       <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                         <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 block">WhatsApp (Ej: 51936494711)</label>
+                         <input className="w-full bg-white p-3 rounded-xl outline-none font-bold text-sm" value={editingConfig!.whatsappNumber} onChange={e => setEditingConfig({...editingConfig!, whatsappNumber: e.target.value})} />
+                      </div>
+                      <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
                          <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Instagram URL</label>
                          <input className="w-full bg-white p-3 rounded-xl outline-none font-bold text-sm" value={editingConfig!.socialMedia.instagram} onChange={e => setEditingConfig({...editingConfig!, socialMedia: {...editingConfig!.socialMedia, instagram: e.target.value}})} />
-                      </div>
-                      <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                         <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 block">TikTok URL</label>
-                         <input className="w-full bg-white p-3 rounded-xl outline-none font-bold text-sm" value={editingConfig!.socialMedia.tiktok} onChange={e => setEditingConfig({...editingConfig!, socialMedia: {...editingConfig!.socialMedia, tiktok: e.target.value}})} />
-                      </div>
-                      <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                         <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Facebook URL</label>
-                         <input className="w-full bg-white p-3 rounded-xl outline-none font-bold text-sm" value={editingConfig!.socialMedia.facebook} onChange={e => setEditingConfig({...editingConfig!, socialMedia: {...editingConfig!.socialMedia, facebook: e.target.value}})} />
                       </div>
                    </div>
                 </div>
@@ -319,7 +316,6 @@ const App: React.FC = () => {
              </div>
            )}
 
-           {/* SLIDES TAB */}
            {activeAdminTab === 'slides' && (
              <div className="max-w-2xl mx-auto space-y-8 animate-fade-in-up">
                 <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-gray-100">
@@ -343,7 +339,6 @@ const App: React.FC = () => {
              </div>
            )}
 
-           {/* PRODUCTS TAB */}
            {activeAdminTab === 'products' && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
               <button onClick={() => setEditingProduct({ id: 'new-' + Date.now(), name: '', price: 0, category: categories[0]?.name || 'Sanguches', description: '', image: 'https://picsum.photos/400/300', variants: [] })} className="bg-dashed border-2 border-dashed border-gray-200 p-8 rounded-[2.5rem] flex flex-col items-center justify-center gap-4 text-gray-400 hover:border-[#e91e63] hover:text-[#e91e63] transition-all group">
@@ -377,13 +372,13 @@ const App: React.FC = () => {
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                    <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Nombre del Plato</label>
+                      <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Nombre</label>
                       <input className="w-full bg-gray-50 p-4 rounded-2xl outline-none font-bold" value={editingProduct.name} onChange={e => setEditingProduct({...editingProduct, name: e.target.value})} placeholder="Nombre" />
                    </div>
                    <div className="space-y-2">
                       <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Categoría</label>
                       <select 
-                        className="w-full bg-gray-50 p-4 rounded-2xl outline-none font-bold text-gray-700 appearance-none cursor-pointer" 
+                        className="w-full bg-gray-50 p-4 rounded-2xl outline-none font-bold text-gray-700" 
                         value={editingProduct.category} 
                         onChange={e => setEditingProduct({...editingProduct, category: e.target.value})}
                       >
@@ -394,12 +389,12 @@ const App: React.FC = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                    <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Precio Base (S/)</label>
-                      <input className="w-full bg-gray-50 p-4 rounded-2xl outline-none font-black text-[#e91e63]" type="number" step="0.5" value={editingProduct.price} onChange={e => setEditingProduct({...editingProduct, price: parseFloat(e.target.value) || 0})} placeholder="Precio" />
+                      <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Precio (S/)</label>
+                      <input className="w-full bg-gray-50 p-4 rounded-2xl outline-none font-black text-[#e91e63]" type="number" step="0.5" value={editingProduct.price} onChange={e => setEditingProduct({...editingProduct, price: parseFloat(e.target.value) || 0})} />
                    </div>
                    <div className="space-y-2">
                       <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Imagen (URL)</label>
-                      <input className="w-full bg-gray-50 p-4 rounded-2xl font-bold outline-none" value={editingProduct.image} placeholder="URL de Imagen" onChange={e => setEditingProduct({...editingProduct, image: e.target.value})} />
+                      <input className="w-full bg-gray-50 p-4 rounded-2xl font-bold outline-none" value={editingProduct.image} onChange={e => setEditingProduct({...editingProduct, image: e.target.value})} />
                    </div>
                 </div>
 
@@ -408,19 +403,15 @@ const App: React.FC = () => {
                    <textarea className="w-full bg-gray-50 p-4 rounded-2xl h-24 outline-none font-medium text-sm" value={editingProduct.description} onChange={e => setEditingProduct({...editingProduct, description: e.target.value})} placeholder="Descripción..."></textarea>
                 </div>
 
-                {/* GESTIÓN DE VARIANTES EN EL ADMIN */}
                 <div className="border-t pt-8 mt-4">
-                   <h4 className="text-sm font-black uppercase tracking-widest text-gray-800 mb-6 flex items-center gap-2">
-                     <i className="fa-solid fa-tags text-[#e91e63]"></i> Variantes del Producto
-                   </h4>
+                   <h4 className="text-sm font-black uppercase tracking-widest text-gray-800 mb-6"><i className="fa-solid fa-tags text-[#e91e63] mr-2"></i> Variantes</h4>
                    <div className="bg-gray-50 p-6 rounded-3xl border border-dashed border-gray-200 mb-6">
                       <div className="grid grid-cols-2 gap-4 mb-4">
-                         <input className="bg-white p-3 rounded-xl outline-none text-xs font-bold" placeholder="Nombre (Ej: Bolsa 15 soles)" value={newVarName} onChange={e => setNewVarName(e.target.value)} />
+                         <input className="bg-white p-3 rounded-xl outline-none text-xs font-bold" placeholder="Nombre (Ej: Bolsa 15)" value={newVarName} onChange={e => setNewVarName(e.target.value)} />
                          <input className="bg-white p-3 rounded-xl outline-none text-xs font-black text-[#e91e63]" type="number" placeholder="Precio S/" value={newVarPrice} onChange={e => setNewVarPrice(parseFloat(e.target.value) || 0)} />
                       </div>
-                      <button onClick={handleAddVariant} className="w-full bg-gray-800 text-white py-3 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-black transition-all">Añadir Variante</button>
+                      <button onClick={handleAddVariant} className="w-full bg-gray-800 text-white py-3 rounded-xl font-black text-[9px] uppercase tracking-widest">Añadir Variante</button>
                    </div>
-                   
                    <div className="space-y-2">
                       {editingProduct.variants && editingProduct.variants.map(v => (
                         <div key={v.id} className="flex justify-between items-center p-4 bg-white border rounded-2xl group shadow-sm">
@@ -444,7 +435,6 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white animate-fade-in relative selection:bg-pink-100 selection:text-[#e91e63]">
-      {/* PASSWORD MODAL */}
       {showPasswordModal && (
         <div className="fixed inset-0 z-[500] bg-black/90 backdrop-blur-2xl flex items-center justify-center p-6 animate-fade-in">
           <div className="bg-white w-full max-w-sm rounded-[3rem] p-10 shadow-2xl animate-zoom-in text-center">
@@ -460,7 +450,6 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* LANDING SECTION */}
       {!showMenu && !showModalitySelector && (
         <div className="h-screen w-full flex flex-col items-center justify-center bg-[#e91e63] relative overflow-hidden">
           <div className="absolute inset-0 bg-cover bg-center opacity-60 transition-all duration-[3000ms]" style={{ backgroundImage: `url("${safeConfig.images.slideBackgrounds[currentSlide % safeConfig.images.slideBackgrounds.length]}")` }}></div>
@@ -473,7 +462,6 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* MODALITY SELECTOR */}
       {showModalitySelector && !showMenu && (
         <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center p-6 bg-[#e91e63] animate-fade-in text-center">
           <img src={safeConfig.images.logo} className="w-36 mb-12 cursor-pointer" onClick={handleLogoClick} />
@@ -492,7 +480,6 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* MAIN MENU */}
       {showMenu && (
         <>
           <header className={`glass-header sticky top-0 z-[100] px-6 transition-all duration-700 flex items-center justify-between ${scrolled ? 'py-3 shadow-xl' : 'py-7'}`}>
@@ -531,18 +518,7 @@ const App: React.FC = () => {
               ? safeConfig.menu.filter(i => recommendedIds.includes(i.id))
               : activeCategory === 'Todos' ? safeConfig.menu : safeConfig.menu.filter(i => i.category === activeCategory)
             ).map(item => (
-              <MenuItemCard 
-                key={item.id} 
-                item={item} 
-                onAddToCart={(it, ev) => { 
-                  if (it.variants && it.variants.length > 0) {
-                    setSelectedItem(it);
-                  } else {
-                    addToCart(it);
-                  }
-                }} 
-                onShowDetails={() => setSelectedItem(item)} 
-              />
+              <MenuItemCard key={item.id} item={item} onAddToCart={(it) => it.variants && it.variants.length > 0 ? setSelectedItem(it) : addToCart(it)} onShowDetails={() => setSelectedItem(item)} />
             ))}
           </main>
 
@@ -553,8 +529,6 @@ const App: React.FC = () => {
              </div>
              <div className="flex gap-8">
                 {safeConfig.socialMedia.instagram && <a href={safeConfig.socialMedia.instagram} target="_blank" className="social-icon w-12 h-12 rounded-2xl flex items-center justify-center text-[#e91e63] text-2xl transition-all"><i className="fa-brands fa-instagram"></i></a>}
-                {safeConfig.socialMedia.tiktok && <a href={safeConfig.socialMedia.tiktok} target="_blank" className="social-icon w-12 h-12 rounded-2xl flex items-center justify-center text-[#e91e63] text-2xl transition-all"><i className="fa-brands fa-tiktok"></i></a>}
-                {safeConfig.socialMedia.facebook && <a href={safeConfig.socialMedia.facebook} target="_blank" className="social-icon w-12 h-12 rounded-2xl flex items-center justify-center text-[#e91e63] text-2xl transition-all"><i className="fa-brands fa-facebook"></i></a>}
                 <a href={`https://wa.me/${safeConfig.whatsappNumber.replace(/\D/g, '')}`} target="_blank" className="social-icon w-12 h-12 rounded-2xl flex items-center justify-center text-[#e91e63] text-2xl transition-all"><i className="fa-brands fa-whatsapp"></i></a>
              </div>
              <div className="flex flex-col items-center gap-1 opacity-30"><p className="text-[7px] font-black uppercase tracking-[0.8em] text-gray-800">Churre Malcriado • Piura</p><span className="w-14 h-[1px] bg-gray-300 mt-2"></span></div>
@@ -569,7 +543,17 @@ const App: React.FC = () => {
           onAddToCart={addToCart} 
         />
       )}
-      <Cart items={cart} onRemove={id => setCart(c => c.filter(x => x.id !== id))} onUpdateQuantity={(id, d) => setCart(c => c.map(x => x.id === id ? {...x, quantity: Math.max(0, x.quantity + d)} : x).filter(x => x.quantity > 0))} isOpen={isCartOpen} onToggle={() => setIsCartOpen(!isCartOpen)} initialModality={orderModality || 'pickup'} whatsappNumber={safeConfig.whatsappNumber} />
+      <Cart 
+        items={cart} 
+        onRemove={id => setCart(c => c.filter(x => x.id !== id))} 
+        onUpdateQuantity={(id, d) => setCart(c => c.map(x => x.id === id ? {...x, quantity: Math.max(0, x.quantity + d)} : x).filter(x => x.quantity > 0))} 
+        isOpen={isCartOpen} 
+        onToggle={() => setIsCartOpen(!isCartOpen)} 
+        initialModality={orderModality || 'pickup'} 
+        whatsappNumber={safeConfig.whatsappNumber} 
+        paymentQr={safeConfig.paymentQr}
+        paymentName={safeConfig.paymentName}
+      />
     </div>
   );
 };

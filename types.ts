@@ -20,12 +20,12 @@ export interface MenuItem {
   note?: string;
   isPopular?: boolean;
   tags?: string[];
-  variants?: ItemVariant[]; // Lista opcional de variantes
+  variants?: ItemVariant[]; 
 }
 
 export interface CartItem extends MenuItem {
   quantity: number;
-  selectedVariant?: ItemVariant; // Variante específica seleccionada
+  selectedVariant?: ItemVariant; 
 }
 
 export interface AppImagesConfig {
@@ -48,4 +48,6 @@ export interface AppConfig {
   menu: MenuItem[];
   whatsappNumber: string;
   socialMedia: SocialMedia;
+  paymentQr?: string;      // URL del QR de Yape/Plin
+  paymentName?: string;    // Nombre del titular de la cuenta
 }
