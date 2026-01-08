@@ -41,6 +41,10 @@ const App: React.FC = () => {
   const [newSlideUrl, setNewSlideUrl] = useState("");
   const [newCategoryName, setNewCategoryName] = useState("");
 
+  const [editingCatId, setEditingCatId] = useState<string | number | null>(null);
+  const [editingCatName, setEditingCatName] = useState("");
+  const [isCatActionLoading, setIsCatActionLoading] = useState(false);
+
   const [newVarName, setNewVarName] = useState("");
   const [newVarPrice, setNewVarPrice] = useState<number>(0);
 
@@ -49,9 +53,19 @@ const App: React.FC = () => {
     try {
       const { data: menuData } = await supabase.from('menu_items').select('*').order('created_at', { ascending: false });
       const { data: configData } = await supabase.from('app_config').select('*').eq('id', 1).single();
-      const { data: catData } = await supabase.from('categories').select('*').order('name', { ascending: true });
-
-      if (catData) setCategories(catData);
+      
+      const { data: catData, error: catError } = await supabase
+        .from('categories')
+        .select('*')
+        .order('sort_order', { ascending: true });
+      
+      if (catError) {
+        console.warn("Error cargando categorías por orden, reintentando por nombre:", catError.message);
+        const { data: fallbackCatData } = await supabase.from('categories').select('*').order('name', { ascending: true });
+        if (fallbackCatData) setCategories(fallbackCatData);
+      } else if (catData) {
+        setCategories(catData);
+      }
 
       const mappedMenu = (menuData || []).map((item: any) => ({
         ...item,
@@ -174,12 +188,81 @@ const App: React.FC = () => {
 
   const handleAddCategory = async () => {
     if (!newCategoryName.trim()) return;
-    const { error } = await supabase.from('categories').insert({ name: newCategoryName.trim() });
+    setIsCatActionLoading(true);
+    const nextOrder = categories.length > 0 ? Math.max(...categories.map(c => (c as any).sort_order || 0)) + 1 : 0;
+    const { error } = await supabase.from('categories').insert({ 
+      name: newCategoryName.trim(),
+      sort_order: nextOrder 
+    });
+    setIsCatActionLoading(false);
     if (!error) { setNewCategoryName(""); await loadData(); }
+    else { alert("Error al añadir: " + error.message); }
+  };
+
+  const handleUpdateCategory = async (id: number | string) => {
+    const newName = editingCatName.trim();
+    if (!newName) return;
+    
+    const oldCategory = categories.find(c => c.id === id);
+    if (!oldCategory) return;
+    const oldName = oldCategory.name;
+
+    setIsCatActionLoading(true);
+    try {
+      const { error: catError } = await supabase.from('categories').update({ name: newName }).eq('id', id);
+      if (catError) throw catError;
+
+      const { error: menuError } = await supabase.from('menu_items').update({ category: newName }).eq('category', oldName);
+      if (menuError) throw menuError;
+
+      setEditingCatId(null);
+      await loadData();
+    } catch (err: any) {
+      alert("Error al actualizar: " + err.message);
+    } finally {
+      setIsCatActionLoading(false);
+    }
+  };
+
+  const handleMoveCategory = async (index: number, direction: 'up' | 'down') => {
+    if (isCatActionLoading) return;
+    
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= categories.length) return;
+    
+    const newCategories = [...categories];
+    const temp = newCategories[index];
+    newCategories[index] = newCategories[targetIndex];
+    newCategories[targetIndex] = temp;
+
+    // Actualización visual inmediata
+    setCategories(newCategories);
+    setIsCatActionLoading(true);
+
+    try {
+      // Preparamos los updates uno por uno para asegurar compatibilidad si el upsert masivo falla
+      // Actualizamos solo el sort_order basándonos en la nueva posición del array
+      const updates = newCategories.map((cat, i) => ({
+        id: cat.id,
+        name: cat.name,
+        sort_order: i
+      }));
+
+      const { error } = await supabase.from('categories').upsert(updates, { onConflict: 'id' });
+      if (error) throw error;
+      
+      console.log("Orden actualizado correctamente.");
+    } catch (err: any) {
+      console.error("Error persistiendo orden:", err.message);
+      alert("No se pudo guardar el orden en la base de datos. Asegúrate de que la tabla 'categories' tenga la columna 'sort_order' (tipo int4).");
+      await loadData(); // Revertir al estado de la DB
+    } finally {
+      setIsCatActionLoading(false);
+    }
   };
 
   const handleDeleteCategory = async (id: number | string) => {
-    if (confirm("¿Seguro que quieres borrar esta categoría?")) {
+    if (confirm("¿Seguro que quieres borrar esta categoría? Los platos de esta categoría se mantendrán pero no tendrán filtro.")) {
       const { error } = await supabase.from('categories').delete().eq('id', id);
       if (!error) await loadData();
     }
@@ -285,21 +368,60 @@ const App: React.FC = () => {
 
         <main className="p-8 max-w-6xl mx-auto w-full">
            {activeAdminTab === 'categories' && (
-             <div className="max-w-xl mx-auto space-y-8 animate-fade-in-up">
+             <div className="max-w-2xl mx-auto space-y-8 animate-fade-in-up">
                 <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-gray-100">
-                   <h3 className="text-xl font-black mb-8 brand-font text-gray-800"><i className="fa-solid fa-layer-group mr-2 text-[#e91e63]"></i> Gestionar Categorías</h3>
+                   <h3 className="text-xl font-black mb-8 brand-font text-gray-800 flex items-center justify-between">
+                     <span><i className="fa-solid fa-layer-group mr-2 text-[#e91e63]"></i> Gestionar Categorías</span>
+                     {isCatActionLoading && <i className="fa-solid fa-spinner fa-spin text-gray-300"></i>}
+                   </h3>
                    <div className="flex gap-4 mb-8">
                       <input className="flex-1 bg-gray-50 p-4 rounded-2xl outline-none font-bold text-sm" placeholder="Nueva Categoría" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} />
-                      <button onClick={handleAddCategory} className="bg-[#e91e63] text-white px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all">Añadir</button>
+                      <button onClick={handleAddCategory} disabled={isCatActionLoading} className="bg-[#e91e63] text-white px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50">Añadir</button>
                    </div>
                    <div className="space-y-3">
-                      {categories.map(cat => (
-                        <div key={cat.id} className="flex justify-between items-center p-5 bg-gray-50 rounded-2xl group">
-                           <span className="font-bold text-gray-700">{cat.name}</span>
-                           <button onClick={() => handleDeleteCategory(cat.id)} className="w-10 h-10 bg-white text-gray-300 hover:text-red-500 rounded-xl shadow-sm opacity-0 group-hover:opacity-100 transition-all"><i className="fa-solid fa-trash-can"></i></button>
+                      {categories.map((cat, idx) => (
+                        <div key={cat.id} className="flex flex-col p-2 bg-gray-50 rounded-2xl group border border-transparent hover:border-pink-50 transition-all">
+                           <div className="flex items-center gap-4 p-3">
+                              <div className="flex flex-col gap-1">
+                                 <button disabled={idx === 0 || isCatActionLoading} onClick={() => handleMoveCategory(idx, 'up')} className="text-gray-300 hover:text-[#e91e63] disabled:opacity-0 p-1 transition-all"><i className="fa-solid fa-caret-up text-lg"></i></button>
+                                 <button disabled={idx === categories.length - 1 || isCatActionLoading} onClick={() => handleMoveCategory(idx, 'down')} className="text-gray-300 hover:text-[#e91e63] disabled:opacity-0 p-1 transition-all"><i className="fa-solid fa-caret-down text-lg"></i></button>
+                              </div>
+                              
+                              <div className="flex-1">
+                                 {editingCatId === cat.id ? (
+                                   <input 
+                                     autoFocus
+                                     className="w-full bg-white px-4 py-2 rounded-xl outline-none font-bold text-sm border-2 border-[#e91e63]"
+                                     value={editingCatName}
+                                     onChange={e => setEditingCatName(e.target.value)}
+                                     onKeyDown={e => e.key === 'Enter' && handleUpdateCategory(cat.id)}
+                                   />
+                                 ) : (
+                                   <span className="font-bold text-gray-700">{cat.name}</span>
+                                 )}
+                              </div>
+
+                              <div className="flex gap-2">
+                                 {editingCatId === cat.id ? (
+                                   <>
+                                     <button onClick={() => handleUpdateCategory(cat.id)} disabled={isCatActionLoading} className="w-10 h-10 bg-green-500 text-white rounded-xl shadow-sm disabled:opacity-50"><i className="fa-solid fa-check"></i></button>
+                                     <button onClick={() => setEditingCatId(null)} className="w-10 h-10 bg-gray-200 text-gray-600 rounded-xl shadow-sm"><i className="fa-solid fa-xmark"></i></button>
+                                   </>
+                                 ) : (
+                                   <button onClick={() => { setEditingCatId(cat.id); setEditingCatName(cat.name); }} className="w-10 h-10 bg-white text-gray-400 hover:text-[#e91e63] rounded-xl shadow-sm opacity-0 group-hover:opacity-100 transition-all"><i className="fa-solid fa-pen-to-square"></i></button>
+                                 )}
+                                 <button onClick={() => handleDeleteCategory(cat.id)} className="w-10 h-10 bg-white text-gray-300 hover:text-red-500 rounded-xl shadow-sm opacity-0 group-hover:opacity-100 transition-all"><i className="fa-solid fa-trash-can"></i></button>
+                              </div>
+                           </div>
                         </div>
                       ))}
                    </div>
+                </div>
+                <div className="bg-[#fdd835]/10 border-2 border-dashed border-[#fdd835]/30 p-6 rounded-[2rem] text-center">
+                  <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">
+                    <i className="fa-solid fa-info-circle mr-2 text-[#e91e63]"></i>
+                    Usa las flechas para ordenar. Si el orden no se guarda, verifica que la tabla 'categories' tenga la columna 'sort_order' de tipo entero.
+                  </p>
                 </div>
              </div>
            )}
