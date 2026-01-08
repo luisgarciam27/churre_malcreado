@@ -328,8 +328,16 @@ const App: React.FC = () => {
                          <input className="w-full bg-white p-3 rounded-xl outline-none font-bold text-sm" value={editingConfig!.whatsappNumber} onChange={e => setEditingConfig({...editingConfig!, whatsappNumber: e.target.value})} />
                       </div>
                       <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                         <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Facebook URL</label>
+                         <input className="w-full bg-white p-3 rounded-xl outline-none font-bold text-sm" value={editingConfig!.socialMedia.facebook} onChange={e => setEditingConfig({...editingConfig!, socialMedia: {...editingConfig!.socialMedia, facebook: e.target.value}})} />
+                      </div>
+                      <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
                          <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Instagram URL</label>
                          <input className="w-full bg-white p-3 rounded-xl outline-none font-bold text-sm" value={editingConfig!.socialMedia.instagram} onChange={e => setEditingConfig({...editingConfig!, socialMedia: {...editingConfig!.socialMedia, instagram: e.target.value}})} />
+                      </div>
+                      <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                         <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 block">TikTok URL</label>
+                         <input className="w-full bg-white p-3 rounded-xl outline-none font-bold text-sm" value={editingConfig!.socialMedia.tiktok} onChange={e => setEditingConfig({...editingConfig!, socialMedia: {...editingConfig!.socialMedia, tiktok: e.target.value}})} />
                       </div>
                    </div>
                 </div>
@@ -549,7 +557,9 @@ const App: React.FC = () => {
                 <div className="flex items-center gap-3 text-gray-400 font-bold uppercase text-[9px] tracking-[0.2em]"><i className="fa-solid fa-clock"></i><span>Atención: 7am a 7pm</span></div>
              </div>
              <div className="flex gap-8">
+                {safeConfig.socialMedia.facebook && <a href={safeConfig.socialMedia.facebook} target="_blank" className="social-icon w-12 h-12 rounded-2xl flex items-center justify-center text-[#e91e63] text-2xl transition-all"><i className="fa-brands fa-facebook"></i></a>}
                 {safeConfig.socialMedia.instagram && <a href={safeConfig.socialMedia.instagram} target="_blank" className="social-icon w-12 h-12 rounded-2xl flex items-center justify-center text-[#e91e63] text-2xl transition-all"><i className="fa-brands fa-instagram"></i></a>}
+                {safeConfig.socialMedia.tiktok && <a href={safeConfig.socialMedia.tiktok} target="_blank" className="social-icon w-12 h-12 rounded-2xl flex items-center justify-center text-[#e91e63] text-2xl transition-all"><i className="fa-brands fa-tiktok"></i></a>}
                 <a href={`https://wa.me/${safeConfig.whatsappNumber.replace(/\D/g, '')}`} target="_blank" className="social-icon w-12 h-12 rounded-2xl flex items-center justify-center text-[#e91e63] text-2xl transition-all"><i className="fa-brands fa-whatsapp"></i></a>
              </div>
              <div className="flex flex-col items-center gap-1 opacity-30"><p className="text-[7px] font-black uppercase tracking-[0.8em] text-gray-800">Churre Malcriado • Piura</p><span className="w-14 h-[1px] bg-gray-300 mt-2"></span></div>
