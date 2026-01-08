@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Category, MenuItem, CartItem, AppConfig } from './types';
+import { Category, MenuItem, CartItem, AppConfig, ItemVariant } from './types';
 import { MENU_ITEMS as DEFAULT_MENU } from './data';
 import { MenuItemCard } from './components/MenuItemCard';
 import { Cart } from './components/Cart';
@@ -41,6 +41,10 @@ const App: React.FC = () => {
   const [newSlideUrl, setNewSlideUrl] = useState("");
   const [newCategoryName, setNewCategoryName] = useState("");
 
+  // Variant helper states
+  const [newVarName, setNewVarName] = useState("");
+  const [newVarPrice, setNewVarPrice] = useState<number>(0);
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -52,7 +56,8 @@ const App: React.FC = () => {
 
       const mappedMenu = (menuData || []).map((item: any) => ({
         ...item,
-        isPopular: item.is_popular
+        isPopular: item.is_popular,
+        variants: item.variants || []
       }));
 
       const newConfig: AppConfig = {
@@ -120,11 +125,35 @@ const App: React.FC = () => {
         category: editingProduct.category,
         image: editingProduct.image,
         is_popular: editingProduct.isPopular || false,
-        tags: editingProduct.tags || []
+        tags: editingProduct.tags || [],
+        variants: editingProduct.variants || []
       };
       const { error } = await supabase.from('menu_items').upsert(payload);
       if (!error) { await loadData(); setEditingProduct(null); alert("¡Plato actualizado!"); }
     } catch (err: any) { alert(`Error: ${err.message}`); }
+  };
+
+  const handleAddVariant = () => {
+    if (!newVarName.trim() || !editingProduct) return;
+    const variant: ItemVariant = {
+      id: Date.now().toString(),
+      name: newVarName.trim(),
+      price: newVarPrice
+    };
+    setEditingProduct({
+      ...editingProduct,
+      variants: [...(editingProduct.variants || []), variant]
+    });
+    setNewVarName("");
+    setNewVarPrice(0);
+  };
+
+  const handleRemoveVariant = (id: string) => {
+    if (!editingProduct) return;
+    setEditingProduct({
+      ...editingProduct,
+      variants: (editingProduct.variants || []).filter(v => v.id !== id)
+    });
   };
 
   const saveAllConfig = async () => {
@@ -166,11 +195,20 @@ const App: React.FC = () => {
     setEditingConfig({ ...editingConfig, images: { ...editingConfig.images, slideBackgrounds: updatedSlides } });
   };
 
-  const addToCart = (item: MenuItem) => {
+  const addToCart = (item: MenuItem, selectedVariant?: ItemVariant) => {
     setCart(prev => {
-      const existing = prev.find(i => i.id === item.id);
-      if (existing) return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i);
-      return [...prev, { ...item, quantity: 1 }];
+      const existing = prev.find(i => 
+        i.id === item.id && 
+        i.selectedVariant?.id === selectedVariant?.id
+      );
+      if (existing) {
+        return prev.map(i => 
+          (i.id === item.id && i.selectedVariant?.id === selectedVariant?.id) 
+            ? { ...i, quantity: i.quantity + 1 } 
+            : i
+        );
+      }
+      return [...prev, { ...item, quantity: 1, selectedVariant }];
     });
     setCartAnimate(true);
     setTimeout(() => setCartAnimate(false), 500);
@@ -308,7 +346,7 @@ const App: React.FC = () => {
            {/* PRODUCTS TAB */}
            {activeAdminTab === 'products' && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
-              <button onClick={() => setEditingProduct({ id: 'new-' + Date.now(), name: '', price: 0, category: categories[0]?.name || 'Sanguches', description: '', image: 'https://picsum.photos/400/300' })} className="bg-dashed border-2 border-dashed border-gray-200 p-8 rounded-[2.5rem] flex flex-col items-center justify-center gap-4 text-gray-400 hover:border-[#e91e63] hover:text-[#e91e63] transition-all group">
+              <button onClick={() => setEditingProduct({ id: 'new-' + Date.now(), name: '', price: 0, category: categories[0]?.name || 'Sanguches', description: '', image: 'https://picsum.photos/400/300', variants: [] })} className="bg-dashed border-2 border-dashed border-gray-200 p-8 rounded-[2.5rem] flex flex-col items-center justify-center gap-4 text-gray-400 hover:border-[#e91e63] hover:text-[#e91e63] transition-all group">
                 <div className="w-12 h-12 rounded-full border-2 border-current flex items-center justify-center group-hover:scale-110 transition-transform"><i className="fa-solid fa-plus"></i></div>
                 <span className="font-black text-[10px] uppercase tracking-widest">Nuevo Plato</span>
               </button>
@@ -318,7 +356,9 @@ const App: React.FC = () => {
                   <div className="flex-1 overflow-hidden">
                     <p className="font-black text-sm text-gray-800 truncate">{p.name}</p>
                     <p className="text-[#e91e63] font-black text-[9px] uppercase tracking-widest">{p.category}</p>
-                    <p className="text-gray-400 font-black text-xs">S/ {p.price.toFixed(2)}</p>
+                    <p className="text-gray-400 font-black text-xs">
+                      {p.variants && p.variants.length > 0 ? `Desde S/ ${Math.min(...p.variants.map(v => v.price)).toFixed(2)}` : `S/ ${p.price.toFixed(2)}`}
+                    </p>
                   </div>
                   <button onClick={() => setEditingProduct(p)} className="w-10 h-10 bg-pink-50 text-[#e91e63] rounded-xl hover:bg-[#e91e63] hover:text-white transition-all"><i className="fa-solid fa-pen-to-square"></i></button>
                 </div>
@@ -329,27 +369,72 @@ const App: React.FC = () => {
 
         {editingProduct && (
           <div className="fixed inset-0 z-[200] bg-black/80 flex items-center justify-center p-6 backdrop-blur-md animate-fade-in">
-            <div className="bg-white w-full max-w-lg rounded-[3.5rem] p-10 shadow-2xl overflow-y-auto max-h-[90vh] animate-zoom-in relative">
+            <div className="bg-white w-full max-w-xl rounded-[3.5rem] p-10 shadow-2xl overflow-y-auto max-h-[90vh] animate-zoom-in relative">
               <div className="flex justify-between items-center mb-10">
                 <h3 className="text-2xl font-black brand-font text-gray-800">Editor de Plato</h3>
                 <button onClick={() => setEditingProduct(null)} className="w-12 h-12 rounded-full bg-gray-100 text-gray-400 hover:text-red-500 transition-colors"><i className="fa-solid fa-xmark"></i></button>
               </div>
               <div className="space-y-6">
-                <input className="w-full bg-gray-50 p-5 rounded-2xl outline-none font-bold" value={editingProduct.name} onChange={e => setEditingProduct({...editingProduct, name: e.target.value})} placeholder="Nombre" />
                 <div className="grid grid-cols-2 gap-4">
-                   <select 
-                    className="w-full bg-gray-50 p-5 rounded-2xl outline-none font-bold text-gray-700 appearance-none cursor-pointer border-2 border-transparent focus:border-pink-100" 
-                    value={editingProduct.category} 
-                    onChange={e => setEditingProduct({...editingProduct, category: e.target.value})}
-                  >
-                     {categories.map(cat => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
-                  </select>
-                   <input className="w-full bg-gray-50 p-5 rounded-2xl outline-none font-black text-[#e91e63]" type="number" step="0.5" value={editingProduct.price} onChange={e => setEditingProduct({...editingProduct, price: parseFloat(e.target.value) || 0})} placeholder="Precio" />
+                   <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Nombre del Plato</label>
+                      <input className="w-full bg-gray-50 p-4 rounded-2xl outline-none font-bold" value={editingProduct.name} onChange={e => setEditingProduct({...editingProduct, name: e.target.value})} placeholder="Nombre" />
+                   </div>
+                   <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Categoría</label>
+                      <select 
+                        className="w-full bg-gray-50 p-4 rounded-2xl outline-none font-bold text-gray-700 appearance-none cursor-pointer" 
+                        value={editingProduct.category} 
+                        onChange={e => setEditingProduct({...editingProduct, category: e.target.value})}
+                      >
+                         {categories.map(cat => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
+                      </select>
+                   </div>
                 </div>
-                <input className="w-full bg-gray-50 p-5 rounded-2xl font-bold outline-none" value={editingProduct.image} placeholder="URL de Imagen (Postimages)" onChange={e => setEditingProduct({...editingProduct, image: e.target.value})} />
-                <textarea className="w-full bg-gray-50 p-5 rounded-2xl h-24 outline-none font-medium text-sm" value={editingProduct.description} onChange={e => setEditingProduct({...editingProduct, description: e.target.value})} placeholder="Descripción..."></textarea>
+
+                <div className="grid grid-cols-2 gap-4">
+                   <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Precio Base (S/)</label>
+                      <input className="w-full bg-gray-50 p-4 rounded-2xl outline-none font-black text-[#e91e63]" type="number" step="0.5" value={editingProduct.price} onChange={e => setEditingProduct({...editingProduct, price: parseFloat(e.target.value) || 0})} placeholder="Precio" />
+                   </div>
+                   <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Imagen (URL)</label>
+                      <input className="w-full bg-gray-50 p-4 rounded-2xl font-bold outline-none" value={editingProduct.image} placeholder="URL de Imagen" onChange={e => setEditingProduct({...editingProduct, image: e.target.value})} />
+                   </div>
+                </div>
+
+                <div className="space-y-2">
+                   <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Descripción</label>
+                   <textarea className="w-full bg-gray-50 p-4 rounded-2xl h-24 outline-none font-medium text-sm" value={editingProduct.description} onChange={e => setEditingProduct({...editingProduct, description: e.target.value})} placeholder="Descripción..."></textarea>
+                </div>
+
+                {/* GESTIÓN DE VARIANTES EN EL ADMIN */}
+                <div className="border-t pt-8 mt-4">
+                   <h4 className="text-sm font-black uppercase tracking-widest text-gray-800 mb-6 flex items-center gap-2">
+                     <i className="fa-solid fa-tags text-[#e91e63]"></i> Variantes del Producto
+                   </h4>
+                   <div className="bg-gray-50 p-6 rounded-3xl border border-dashed border-gray-200 mb-6">
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                         <input className="bg-white p-3 rounded-xl outline-none text-xs font-bold" placeholder="Nombre (Ej: Bolsa 15 soles)" value={newVarName} onChange={e => setNewVarName(e.target.value)} />
+                         <input className="bg-white p-3 rounded-xl outline-none text-xs font-black text-[#e91e63]" type="number" placeholder="Precio S/" value={newVarPrice} onChange={e => setNewVarPrice(parseFloat(e.target.value) || 0)} />
+                      </div>
+                      <button onClick={handleAddVariant} className="w-full bg-gray-800 text-white py-3 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-black transition-all">Añadir Variante</button>
+                   </div>
+                   
+                   <div className="space-y-2">
+                      {editingProduct.variants && editingProduct.variants.map(v => (
+                        <div key={v.id} className="flex justify-between items-center p-4 bg-white border rounded-2xl group shadow-sm">
+                           <div>
+                              <span className="font-bold text-gray-700 text-xs">{v.name}</span>
+                              <span className="ml-3 font-black text-[#e91e63] text-xs">S/ {v.price.toFixed(2)}</span>
+                           </div>
+                           <button onClick={() => handleRemoveVariant(v.id)} className="w-8 h-8 bg-pink-50 text-red-400 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 hover:text-white"><i className="fa-solid fa-trash-can text-[10px]"></i></button>
+                        </div>
+                      ))}
+                   </div>
+                </div>
               </div>
-              <button onClick={saveProduct} className="w-full bg-[#e91e63] text-white py-5 mt-8 rounded-2xl font-black shadow-lg uppercase text-xs tracking-widest active:scale-95 transition-all">Actualizar Plato</button>
+              <button onClick={saveProduct} className="w-full bg-[#e91e63] text-white py-5 mt-10 rounded-2xl font-black shadow-lg uppercase text-xs tracking-widest active:scale-95 transition-all">Actualizar Plato</button>
             </div>
           </div>
         )}
@@ -446,7 +531,18 @@ const App: React.FC = () => {
               ? safeConfig.menu.filter(i => recommendedIds.includes(i.id))
               : activeCategory === 'Todos' ? safeConfig.menu : safeConfig.menu.filter(i => i.category === activeCategory)
             ).map(item => (
-              <MenuItemCard key={item.id} item={item} onAddToCart={addToCart} onShowDetails={() => setSelectedItem(item)} />
+              <MenuItemCard 
+                key={item.id} 
+                item={item} 
+                onAddToCart={(it, ev) => { 
+                  if (it.variants && it.variants.length > 0) {
+                    setSelectedItem(it);
+                  } else {
+                    addToCart(it);
+                  }
+                }} 
+                onShowDetails={() => setSelectedItem(item)} 
+              />
             ))}
           </main>
 
@@ -466,7 +562,13 @@ const App: React.FC = () => {
         </>
       )}
 
-      {selectedItem && <ProductDetailModal item={selectedItem} onClose={() => setSelectedItem(null)} onAddToCart={addToCart} />}
+      {selectedItem && (
+        <ProductDetailModal 
+          item={selectedItem} 
+          onClose={() => setSelectedItem(null)} 
+          onAddToCart={addToCart} 
+        />
+      )}
       <Cart items={cart} onRemove={id => setCart(c => c.filter(x => x.id !== id))} onUpdateQuantity={(id, d) => setCart(c => c.map(x => x.id === id ? {...x, quantity: Math.max(0, x.quantity + d)} : x).filter(x => x.quantity > 0))} isOpen={isCartOpen} onToggle={() => setIsCartOpen(!isCartOpen)} initialModality={orderModality || 'pickup'} whatsappNumber={safeConfig.whatsappNumber} />
     </div>
   );

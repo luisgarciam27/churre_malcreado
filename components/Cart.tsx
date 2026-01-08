@@ -26,7 +26,11 @@ export const Cart: React.FC<CartProps> = ({ items, onRemove, onUpdateQuantity, i
     setOrderType(initialModality);
   }, [initialModality]);
 
-  const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const total = items.reduce((sum, item) => {
+    const price = item.selectedVariant ? item.selectedVariant.price : item.price;
+    return sum + price * item.quantity;
+  }, 0);
+  
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
 
   const handleWhatsAppOrder = async () => {
@@ -36,18 +40,22 @@ export const Cart: React.FC<CartProps> = ({ items, onRemove, onUpdateQuantity, i
       const { error } = await supabase.from('orders').insert({
         customer_name: customerName,
         customer_phone: customerPhone,
-        items: items.map(i => ({ id: i.id, name: i.name, quantity: i.quantity, price: i.price })),
+        items: items.map(i => ({ 
+          id: i.id, 
+          name: i.name, 
+          quantity: i.quantity, 
+          price: i.selectedVariant ? i.selectedVariant.price : i.price,
+          variant: i.selectedVariant?.name || null
+        })),
         total: total,
         modality: orderType,
         address: orderType === 'delivery' ? address : 'Recojo en tienda',
         status: 'Pendiente'
       });
       
-      if (error) {
-        console.error("Error de Supabase:", error.message, error.details);
-      }
+      if (error) console.error("Error Supabase:", error);
     } catch (e: any) {
-      console.error("Error inesperado al guardar pedido:", e?.message || e);
+      console.error("Error inesperado:", e);
     }
 
     const typeLabel = orderType === 'delivery' ? '🛵 DELIVERY' : '🏠 RECOJO';
@@ -57,7 +65,7 @@ export const Cart: React.FC<CartProps> = ({ items, onRemove, onUpdateQuantity, i
       `¡Hola Churre! 🌶️\n` +
       `Pedido de: *${customerName}*\n` +
       `Para: *${typeLabel}*${addressInfo}\n\n` +
-      items.map(item => `- ${item.quantity}x ${item.name}`).join('\n') +
+      items.map(item => `- ${item.quantity}x ${item.name} ${item.selectedVariant ? `(${item.selectedVariant.name})` : ''}`).join('\n') +
       `\n\n💰 *Total: S/ ${total.toFixed(2)}*`
     );
 
@@ -89,7 +97,6 @@ export const Cart: React.FC<CartProps> = ({ items, onRemove, onUpdateQuantity, i
       <div className="absolute inset-0" onClick={onToggle}></div>
       
       <div className="relative bg-white w-full max-w-md sm:rounded-[3rem] shadow-[0_50px_100px_rgba(0,0,0,0.25)] overflow-hidden flex flex-col h-full sm:h-auto sm:max-h-[90vh] animate-zoom-in">
-        {/* Header */}
         <div className="bg-[#e91e63] p-8 flex justify-between items-center">
           <h2 className="text-2xl font-black text-white brand-font tracking-tight">Tu Pedido</h2>
           <button onClick={onToggle} className="w-10 h-10 flex items-center justify-center rounded-full bg-white/20 border border-white/20">
@@ -97,44 +104,23 @@ export const Cart: React.FC<CartProps> = ({ items, onRemove, onUpdateQuantity, i
           </button>
         </div>
 
-        {/* Modalidad Selector */}
         <div className="px-10 py-6">
           <div className="bg-[#f3f4f6] p-1.5 rounded-full flex gap-1 shadow-inner mb-6">
             <button onClick={() => setOrderType('pickup')} className={`flex-1 py-3.5 rounded-full text-xs font-black uppercase tracking-widest transition-all ${orderType === 'pickup' ? 'bg-white text-[#e91e63] shadow-lg' : 'text-gray-400'}`}>Recojo</button>
             <button onClick={() => setOrderType('delivery')} className={`flex-1 py-3.5 rounded-full text-xs font-black uppercase tracking-widest transition-all ${orderType === 'delivery' ? 'bg-white text-[#e91e63] shadow-lg' : 'text-gray-400'}`}>Delivery</button>
           </div>
 
-          {/* Datos del Cliente */}
-          <div className="space-y-4 animate-fade-in-up">
+          <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-               <input 
-                type="text" 
-                placeholder="Tu Nombre" 
-                className="w-full bg-gray-50 p-4 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-pink-100" 
-                value={customerName} 
-                onChange={e => setCustomerName(e.target.value)} 
-              />
-              <input 
-                type="tel" 
-                placeholder="Teléfono" 
-                className="w-full bg-gray-50 p-4 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-pink-100" 
-                value={customerPhone} 
-                onChange={e => setCustomerPhone(e.target.value)} 
-              />
+               <input type="text" placeholder="Tu Nombre" className="w-full bg-gray-50 p-4 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-pink-100" value={customerName} onChange={e => setCustomerName(e.target.value)} />
+               <input type="tel" placeholder="Teléfono" className="w-full bg-gray-50 p-4 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-pink-100" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} />
             </div>
             {orderType === 'delivery' && (
-              <input 
-                type="text" 
-                placeholder="Dirección exacta..." 
-                className="w-full bg-gray-50 p-4 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-pink-100" 
-                value={address} 
-                onChange={e => setAddress(e.target.value)} 
-              />
+              <input type="text" placeholder="Dirección exacta..." className="w-full bg-gray-50 p-4 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-pink-100" value={address} onChange={e => setAddress(e.target.value)} />
             )}
           </div>
         </div>
 
-        {/* Listado */}
         <div className="flex-1 overflow-y-auto px-10 py-2 custom-scrollbar">
           {items.length === 0 ? (
             <div className="text-center py-10 opacity-20">
@@ -143,20 +129,27 @@ export const Cart: React.FC<CartProps> = ({ items, onRemove, onUpdateQuantity, i
             </div>
           ) : (
             <div className="space-y-5">
-              {items.map((item, idx) => (
-                <div key={item.id} className="flex justify-between items-center animate-fade-in-up" style={{ animationDelay: `${idx * 0.05}s` }}>
-                  <div className="flex items-center gap-3">
-                    <span className="font-black text-gray-800">{item.quantity}x</span>
-                    <span className="font-bold text-gray-700 text-sm">{item.name}</span>
+              {items.map((item, idx) => {
+                const itemPrice = item.selectedVariant ? item.selectedVariant.price : item.price;
+                return (
+                  <div key={`${item.id}-${item.selectedVariant?.id || 'base'}`} className="flex justify-between items-center animate-fade-in-up" style={{ animationDelay: `${idx * 0.05}s` }}>
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-3">
+                        <span className="font-black text-gray-800">{item.quantity}x</span>
+                        <span className="font-bold text-gray-700 text-sm">{item.name}</span>
+                      </div>
+                      {item.selectedVariant && (
+                        <span className="ml-8 text-[10px] text-[#e91e63] font-bold uppercase">{item.selectedVariant.name}</span>
+                      )}
+                    </div>
+                    <span className="font-black text-[#e91e63]">S/ {(itemPrice * item.quantity).toFixed(2)}</span>
                   </div>
-                  <span className="font-black text-[#e91e63]">S/ {(item.price * item.quantity).toFixed(2)}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
 
-        {/* Total y Botón */}
         <div className="p-10 border-t border-gray-100 bg-gray-50/30">
           <div className="flex justify-between items-end mb-8">
             <div className="flex flex-col">

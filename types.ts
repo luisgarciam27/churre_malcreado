@@ -4,20 +4,28 @@ export interface Category {
   name: string;
 }
 
+export interface ItemVariant {
+  id: string;
+  name: string;
+  price: number;
+}
+
 export interface MenuItem {
   id: string;
   name: string;
   description: string;
   price: number;
-  category: string; // Guardamos el nombre de la categoría
+  category: string;
   image: string;
   note?: string;
   isPopular?: boolean;
   tags?: string[];
+  variants?: ItemVariant[]; // Lista opcional de variantes
 }
 
 export interface CartItem extends MenuItem {
   quantity: number;
+  selectedVariant?: ItemVariant; // Variante específica seleccionada
 }
 
 export interface AppImagesConfig {
