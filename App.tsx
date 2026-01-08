@@ -217,6 +217,27 @@ const App: React.FC = () => {
     setTimeout(() => setCartAnimate(false), 500);
   };
 
+  const removeFromCart = (id: string, variantId?: string) => {
+    setCart(prev => prev.filter(item => 
+      !(item.id === id && (variantId ? item.selectedVariant?.id === variantId : !item.selectedVariant))
+    ));
+  };
+
+  const updateQuantity = (id: string, delta: number, variantId?: string) => {
+    setCart(prev => prev.map(item => {
+      if (item.id === id && (variantId ? item.selectedVariant?.id === variantId : !item.selectedVariant)) {
+        const newQty = Math.max(1, item.quantity + delta);
+        return { ...item, quantity: newQty };
+      }
+      return item;
+    }));
+  };
+
+  const clearCart = () => {
+    setCart([]);
+    setIsCartOpen(false);
+  };
+
   const handleAskAi = async () => {
     if (!userInput.trim() || isAskingAi || !config) return;
     setIsAskingAi(true);
@@ -545,8 +566,9 @@ const App: React.FC = () => {
       )}
       <Cart 
         items={cart} 
-        onRemove={id => setCart(c => c.filter(x => x.id !== id))} 
-        onUpdateQuantity={(id, d) => setCart(c => c.map(x => x.id === id ? {...x, quantity: Math.max(0, x.quantity + d)} : x).filter(x => x.quantity > 0))} 
+        onRemove={removeFromCart} 
+        onUpdateQuantity={updateQuantity} 
+        onClearCart={clearCart}
         isOpen={isCartOpen} 
         onToggle={() => setIsCartOpen(!isCartOpen)} 
         initialModality={orderModality || 'pickup'} 

@@ -5,8 +5,9 @@ import { supabase } from '../services/supabaseClient';
 
 interface CartProps {
   items: CartItem[];
-  onRemove: (id: string) => void;
-  onUpdateQuantity: (id: string, delta: number) => void;
+  onRemove: (id: string, variantId?: string) => void;
+  onUpdateQuantity: (id: string, delta: number, variantId?: string) => void;
+  onClearCart: () => void;
   isOpen: boolean;
   onToggle: () => void;
   initialModality: 'delivery' | 'pickup';
@@ -18,7 +19,7 @@ interface CartProps {
 type OrderType = 'delivery' | 'pickup';
 
 export const Cart: React.FC<CartProps> = ({ 
-  items, onRemove, onUpdateQuantity, isOpen, onToggle, 
+  items, onRemove, onUpdateQuantity, onClearCart, isOpen, onToggle, 
   initialModality, whatsappNumber, paymentQr, paymentName 
 }) => {
   const [orderType, setOrderType] = useState<OrderType>(initialModality);
@@ -158,19 +159,63 @@ export const Cart: React.FC<CartProps> = ({
             </div>
 
             <div className="flex-1 overflow-y-auto px-10 py-2 custom-scrollbar border-t border-gray-50">
-              <div className="space-y-4 py-4">
-                {items.map((item, idx) => (
-                  <div key={idx} className="flex justify-between items-center text-sm">
-                    <div className="flex flex-col">
-                      <div className="flex items-center gap-2">
-                        <span className="font-black text-[#e91e63]">{item.quantity}x</span>
-                        <span className="font-bold text-gray-700">{item.name}</span>
+              <div className="flex justify-between items-center py-4 mb-2">
+                <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Productos</h4>
+                <button 
+                  onClick={() => { if(confirm('¿Vaciar todo el carrito?')) onClearCart(); }}
+                  className="text-[9px] font-black uppercase text-red-400 hover:text-red-600 transition-colors"
+                >
+                  Vaciar Carrito
+                </button>
+              </div>
+              
+              <div className="space-y-5 pb-6">
+                {items.length === 0 ? (
+                  <p className="text-center text-gray-400 text-xs py-10 font-medium">Tu carrito está vacío, sobrino.</p>
+                ) : (
+                  items.map((item, idx) => {
+                    const price = item.selectedVariant ? item.selectedVariant.price : item.price;
+                    return (
+                      <div key={`${item.id}-${item.selectedVariant?.id || 'base'}`} className="flex justify-between items-start animate-fade-in-up">
+                        <div className="flex flex-col flex-1">
+                          <span className="font-bold text-gray-700 text-sm">{item.name}</span>
+                          {item.selectedVariant && (
+                            <span className="text-[9px] font-black uppercase text-[#e91e63] mb-1">
+                              {item.selectedVariant.name}
+                            </span>
+                          )}
+                          <div className="flex items-center gap-4 mt-2">
+                            <div className="flex items-center bg-gray-50 rounded-full border px-2 py-1">
+                              <button 
+                                onClick={() => onUpdateQuantity(item.id, -1, item.selectedVariant?.id)}
+                                className="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-[#e91e63]"
+                              >
+                                <i className="fa-solid fa-minus text-[10px]"></i>
+                              </button>
+                              <span className="w-8 text-center font-black text-xs text-gray-800">{item.quantity}</span>
+                              <button 
+                                onClick={() => onUpdateQuantity(item.id, 1, item.selectedVariant?.id)}
+                                className="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-[#e91e63]"
+                              >
+                                <i className="fa-solid fa-plus text-[10px]"></i>
+                              </button>
+                            </div>
+                            <button 
+                              onClick={() => onRemove(item.id, item.selectedVariant?.id)}
+                              className="text-gray-300 hover:text-red-500 transition-colors"
+                            >
+                              <i className="fa-solid fa-trash-can text-[10px]"></i>
+                            </button>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end">
+                          <span className="font-black text-gray-800 text-sm">S/ {(price * item.quantity).toFixed(2)}</span>
+                          <span className="text-[9px] text-gray-300 font-bold">S/ {price.toFixed(2)} c/u</span>
+                        </div>
                       </div>
-                      {item.selectedVariant && <span className="text-[9px] font-black uppercase text-gray-400 ml-6">{item.selectedVariant.name}</span>}
-                    </div>
-                    <span className="font-black text-gray-800">S/ {((item.selectedVariant ? item.selectedVariant.price : item.price) * item.quantity).toFixed(2)}</span>
-                  </div>
-                ))}
+                    );
+                  })
+                )}
               </div>
             </div>
 
@@ -179,13 +224,21 @@ export const Cart: React.FC<CartProps> = ({
                 <span className="text-gray-400 font-black uppercase text-[10px] tracking-widest">Total</span>
                 <span className="text-3xl font-black text-[#e91e63] tracking-tighter">S/ {total.toFixed(2)}</span>
               </div>
-              <button 
-                disabled={!isFormValid || items.length === 0}
-                onClick={() => setStep(2)}
-                className="w-full py-6 rounded-[2rem] bg-gray-900 text-white font-black uppercase tracking-widest shadow-xl transition-all active:scale-[0.97] disabled:bg-gray-200"
-              >
-                Continuar a Confirmar
-              </button>
+              <div className="flex flex-col gap-3">
+                <button 
+                  disabled={!isFormValid || items.length === 0}
+                  onClick={() => setStep(2)}
+                  className="w-full py-6 rounded-[2rem] bg-gray-900 text-white font-black uppercase tracking-widest shadow-xl transition-all active:scale-[0.97] disabled:bg-gray-200"
+                >
+                  Continuar a Confirmar
+                </button>
+                <button 
+                  onClick={onToggle}
+                  className="w-full py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  Seguir Comprando
+                </button>
+              </div>
             </div>
           </div>
         )}
