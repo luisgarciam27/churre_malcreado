@@ -19,8 +19,8 @@ export interface MenuItem {
   image: string;
   note?: string;
   isPopular?: boolean;
-  isCombo?: boolean;       // Nuevo: Indica si es una promoción
-  comboItems?: string[];   // Nuevo: Lista de lo que incluye el combo
+  isCombo?: boolean;
+  comboItems?: string[];
   tags?: string[];
   variants?: ItemVariant[]; 
 }
@@ -30,26 +30,41 @@ export interface CartItem extends MenuItem {
   selectedVariant?: ItemVariant; 
 }
 
-export interface AppImagesConfig {
-  logo: string;
-  menuLogo: string;
-  selectorLogo: string;
-  aiAvatar: string;
-  slideBackgrounds: string[];
-  menuBackground: string;
-}
-
-export interface SocialMedia {
-  facebook: string;
-  instagram: string;
-  tiktok: string;
-}
-
 export interface AppConfig {
-  images: AppImagesConfig;
+  images: {
+    logo: string;
+    menuLogo: string;
+    selectorLogo: string;
+    aiAvatar: string;
+    slideBackgrounds: string[];
+    menuBackground: string;
+  };
   menu: MenuItem[];
   whatsappNumber: string;
-  socialMedia: SocialMedia;
-  paymentQr?: string;      // URL del QR de Yape/Plin
-  paymentName?: string;    // Nombre del titular de la cuenta
+  socialMedia: { facebook: string; instagram: string; tiktok: string; };
+  paymentQr?: string;
+  paymentName?: string;
+}
+
+// POS Types
+export interface CashSession {
+  id: number;
+  opened_at: string;
+  closed_at?: string;
+  opening_balance: number;
+  closing_balance?: number;
+  total_sales: number;
+  total_entry: number;
+  total_exit: number;
+  status: 'open' | 'closed';
+  user_name: string;
+}
+
+export interface CashTransaction {
+  id: number;
+  session_id: number;
+  type: 'entry' | 'exit';
+  amount: number;
+  reason: string;
+  created_at: string;
 }
