@@ -19,6 +19,8 @@ export interface MenuItem {
   image: string;
   note?: string;
   isPopular?: boolean;
+  isCombo?: boolean;       // Nuevo: Indica si es una promoción
+  comboItems?: string[];   // Nuevo: Lista de lo que incluye el combo
   tags?: string[];
   variants?: ItemVariant[]; 
 }

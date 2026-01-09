@@ -47,6 +47,7 @@ const App: React.FC = () => {
 
   const [newVarName, setNewVarName] = useState("");
   const [newVarPrice, setNewVarPrice] = useState<number>(0);
+  const [newComboItem, setNewComboItem] = useState("");
 
   const loadData = async () => {
     setLoading(true);
@@ -70,6 +71,8 @@ const App: React.FC = () => {
       const mappedMenu = (menuData || []).map((item: any) => ({
         ...item,
         isPopular: item.is_popular,
+        isCombo: item.is_combo,
+        comboItems: item.combo_items || [],
         variants: item.variants || []
       }));
 
@@ -140,6 +143,8 @@ const App: React.FC = () => {
         category: editingProduct.category,
         image: editingProduct.image,
         is_popular: editingProduct.isPopular || false,
+        is_combo: editingProduct.isCombo || false,
+        combo_items: editingProduct.comboItems || [],
         tags: editingProduct.tags || [],
         variants: editingProduct.variants || []
       };
@@ -169,6 +174,22 @@ const App: React.FC = () => {
       ...editingProduct,
       variants: (editingProduct.variants || []).filter(v => v.id !== id)
     });
+  };
+
+  const handleAddComboItem = () => {
+    if (!newComboItem.trim() || !editingProduct) return;
+    setEditingProduct({
+      ...editingProduct,
+      comboItems: [...(editingProduct.comboItems || []), newComboItem.trim()]
+    });
+    setNewComboItem("");
+  };
+
+  const handleRemoveComboItem = (index: number) => {
+    if (!editingProduct) return;
+    const items = [...(editingProduct.comboItems || [])];
+    items.splice(index, 1);
+    setEditingProduct({ ...editingProduct, comboItems: items });
   };
 
   const saveAllConfig = async () => {
@@ -240,8 +261,6 @@ const App: React.FC = () => {
     setIsCatActionLoading(true);
 
     try {
-      // Preparamos los updates uno por uno para asegurar compatibilidad si el upsert masivo falla
-      // Actualizamos solo el sort_order basándonos en la nueva posición del array
       const updates = newCategories.map((cat, i) => ({
         id: cat.id,
         name: cat.name,
@@ -250,19 +269,17 @@ const App: React.FC = () => {
 
       const { error } = await supabase.from('categories').upsert(updates, { onConflict: 'id' });
       if (error) throw error;
-      
-      console.log("Orden actualizado correctamente.");
     } catch (err: any) {
       console.error("Error persistiendo orden:", err.message);
-      alert("No se pudo guardar el orden en la base de datos. Asegúrate de que la tabla 'categories' tenga la columna 'sort_order' (tipo int4).");
-      await loadData(); // Revertir al estado de la DB
+      alert("No se pudo guardar el orden en la base de datos.");
+      await loadData(); 
     } finally {
       setIsCatActionLoading(false);
     }
   };
 
   const handleDeleteCategory = async (id: number | string) => {
-    if (confirm("¿Seguro que quieres borrar esta categoría? Los platos de esta categoría se mantendrán pero no tendrán filtro.")) {
+    if (confirm("¿Seguro que quieres borrar esta categoría?")) {
       const { error } = await supabase.from('categories').delete().eq('id', id);
       if (!error) await loadData();
     }
@@ -417,12 +434,6 @@ const App: React.FC = () => {
                       ))}
                    </div>
                 </div>
-                <div className="bg-[#fdd835]/10 border-2 border-dashed border-[#fdd835]/30 p-6 rounded-[2rem] text-center">
-                  <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">
-                    <i className="fa-solid fa-info-circle mr-2 text-[#e91e63]"></i>
-                    Usa las flechas para ordenar. Si el orden no se guarda, verifica que la tabla 'categories' tenga la columna 'sort_order' de tipo entero.
-                  </p>
-                </div>
              </div>
            )}
 
@@ -492,7 +503,7 @@ const App: React.FC = () => {
 
            {activeAdminTab === 'products' && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
-              <button onClick={() => setEditingProduct({ id: 'new-' + Date.now(), name: '', price: 0, category: categories[0]?.name || 'Sanguches', description: '', image: 'https://picsum.photos/400/300', variants: [] })} className="bg-dashed border-2 border-dashed border-gray-200 p-8 rounded-[2.5rem] flex flex-col items-center justify-center gap-4 text-gray-400 hover:border-[#e91e63] hover:text-[#e91e63] transition-all group">
+              <button onClick={() => setEditingProduct({ id: 'new-' + Date.now(), name: '', price: 0, category: categories[0]?.name || 'Sanguches', description: '', image: 'https://picsum.photos/400/300', variants: [], isCombo: false, comboItems: [] })} className="bg-dashed border-2 border-dashed border-gray-200 p-8 rounded-[2.5rem] flex flex-col items-center justify-center gap-4 text-gray-400 hover:border-[#e91e63] hover:text-[#e91e63] transition-all group">
                 <div className="w-12 h-12 rounded-full border-2 border-current flex items-center justify-center group-hover:scale-110 transition-transform"><i className="fa-solid fa-plus"></i></div>
                 <span className="font-black text-[10px] uppercase tracking-widest">Nuevo Plato</span>
               </button>
@@ -501,10 +512,8 @@ const App: React.FC = () => {
                   <img src={p.image} className="w-20 h-20 rounded-2xl object-cover bg-gray-100" />
                   <div className="flex-1 overflow-hidden">
                     <p className="font-black text-sm text-gray-800 truncate">{p.name}</p>
-                    <p className="text-[#e91e63] font-black text-[9px] uppercase tracking-widest">{p.category}</p>
-                    <p className="text-gray-400 font-black text-xs">
-                      {p.variants && p.variants.length > 0 ? `Desde S/ ${Math.min(...p.variants.map(v => v.price)).toFixed(2)}` : `S/ ${p.price.toFixed(2)}`}
-                    </p>
+                    <p className="text-[#e91e63] font-black text-[9px] uppercase tracking-widest">{p.isCombo ? 'PROMOCIÓN' : p.category}</p>
+                    <p className="text-gray-400 font-black text-xs">S/ {p.price.toFixed(2)}</p>
                   </div>
                   <button onClick={() => setEditingProduct(p)} className="w-10 h-10 bg-pink-50 text-[#e91e63] rounded-xl hover:bg-[#e91e63] hover:text-white transition-all"><i className="fa-solid fa-pen-to-square"></i></button>
                 </div>
@@ -521,6 +530,17 @@ const App: React.FC = () => {
                 <button onClick={() => setEditingProduct(null)} className="w-12 h-12 rounded-full bg-gray-100 text-gray-400 hover:text-red-500 transition-colors"><i className="fa-solid fa-xmark"></i></button>
               </div>
               <div className="space-y-6">
+                <div className="flex items-center gap-4 mb-4">
+                  <label className="flex items-center gap-2 cursor-pointer bg-pink-50 px-4 py-2 rounded-xl border border-pink-100">
+                    <input type="checkbox" className="w-4 h-4 accent-[#e91e63]" checked={editingProduct.isCombo} onChange={e => setEditingProduct({...editingProduct, isCombo: e.target.checked})} />
+                    <span className="text-[10px] font-black uppercase text-[#e91e63] tracking-widest">¿Es un Combo?</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer bg-yellow-50 px-4 py-2 rounded-xl border border-yellow-100">
+                    <input type="checkbox" className="w-4 h-4 accent-yellow-600" checked={editingProduct.isPopular} onChange={e => setEditingProduct({...editingProduct, isPopular: e.target.checked})} />
+                    <span className="text-[10px] font-black uppercase text-yellow-600 tracking-widest">Popular</span>
+                  </label>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                    <div className="space-y-2">
                       <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Nombre</label>
@@ -553,6 +573,24 @@ const App: React.FC = () => {
                    <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Descripción</label>
                    <textarea className="w-full bg-gray-50 p-4 rounded-2xl h-24 outline-none font-medium text-sm" value={editingProduct.description} onChange={e => setEditingProduct({...editingProduct, description: e.target.value})} placeholder="Descripción..."></textarea>
                 </div>
+
+                {editingProduct.isCombo && (
+                  <div className="bg-[#fdd835]/10 border-2 border-dashed border-[#fdd835]/30 p-8 rounded-[2.5rem] mt-6 animate-fade-in-up">
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-[#856404] mb-4">Items que incluye el combo:</h4>
+                    <div className="flex gap-2 mb-4">
+                      <input className="flex-1 bg-white p-3 rounded-xl outline-none text-xs font-bold" placeholder="Ej: 1 Chicha Morada" value={newComboItem} onChange={e => setNewComboItem(e.target.value)} />
+                      <button onClick={handleAddComboItem} className="bg-gray-800 text-white px-4 rounded-xl text-[10px] font-black uppercase tracking-widest">Añadir</button>
+                    </div>
+                    <div className="space-y-2">
+                      {editingProduct.comboItems?.map((item, i) => (
+                        <div key={i} className="flex justify-between items-center bg-white p-3 rounded-xl shadow-sm">
+                          <span className="text-xs font-bold text-gray-700">{item}</span>
+                          <button onClick={() => handleRemoveComboItem(i)} className="text-red-400 hover:text-red-600 transition-colors"><i className="fa-solid fa-circle-minus"></i></button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="border-t pt-8 mt-4">
                    <h4 className="text-sm font-black uppercase tracking-widest text-gray-800 mb-6"><i className="fa-solid fa-tags text-[#e91e63] mr-2"></i> Variantes</h4>
