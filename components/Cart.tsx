@@ -27,11 +27,13 @@ export const Cart: React.FC<CartProps> = ({
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [hasCopied, setHasCopied] = useState(false);
 
   const STORE_ADDRESS = "Mercado 2 de Surquillo, Puesto 651";
 
   useEffect(() => {
     setOrderType(initialModality);
+    if (isOpen) setHasCopied(false);
   }, [initialModality, isOpen]);
 
   const total = items.reduce((sum, item) => {
@@ -41,11 +43,24 @@ export const Cart: React.FC<CartProps> = ({
   
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
 
+  const handleCopyNumber = () => {
+    const cleanNumber = whatsappNumber.replace(/\D/g, '');
+    navigator.clipboard.writeText(cleanNumber);
+    setHasCopied(true);
+    
+    // Si ya completó los datos, avisamos sutilmente que ya puede pedir
+    if (isFormComplete) {
+       // Opcional: Podríamos disparar una pequeña vibración o sonido aquí
+    }
+  };
+
   const handleWhatsAppOrder = async () => {
     if (!customerName || !customerPhone || (orderType === 'delivery' && !address)) {
       alert("¡Habla sobrino! Completa todos los datos para llevarte tu pedido.");
       return;
     }
+
+    if (!hasCopied) return;
 
     setIsSaving(true);
     try {
@@ -76,7 +91,7 @@ export const Cart: React.FC<CartProps> = ({
       items.map(i => `• ${i.quantity}x ${i.name} ${i.selectedVariant ? `(${i.selectedVariant.name})` : ''} - S/ ${((i.selectedVariant?.price || i.price) * i.quantity).toFixed(2)}`).join('\n') +
       `\n\n*TOTAL A PAGAR: S/ ${total.toFixed(2)}*\n` +
       `\n--------------------------------\n` +
-      `_¡Churre, confírmame el pedido para prender el fuego!_ 🌶️`
+      `_¡Churre, ya copié el número de pago! Aquí te mando el pedido para yapearte y mandar la captura._ 🌶️`
     );
 
     const cleanNumber = whatsappNumber.replace(/\D/g, '');
@@ -89,171 +104,188 @@ export const Cart: React.FC<CartProps> = ({
     return (
       <button 
         onClick={onToggle} 
-        className="fixed bottom-10 right-10 bg-[#e91e63] text-white w-20 h-20 rounded-full shadow-[0_15px_30px_rgba(233,30,99,0.4)] z-50 flex items-center justify-center transition-all hover:scale-110 active:scale-95 animate-bounce-slow"
+        className="fixed bottom-6 right-6 md:bottom-10 md:right-10 bg-[#e91e63] text-white w-16 h-16 md:w-20 md:h-20 rounded-full shadow-[0_15px_30px_rgba(233,30,99,0.4)] z-50 flex items-center justify-center transition-all hover:scale-110 active:scale-95 animate-bounce-slow"
       >
-        <i className="fa-solid fa-basket-shopping text-2xl"></i>
-        <span className="absolute -top-1 -right-1 bg-[#fdd835] text-black text-[11px] font-black w-7 h-7 rounded-full flex items-center justify-center border-4 border-white shadow-md">{totalItems}</span>
+        <i className="fa-solid fa-basket-shopping text-xl md:text-2xl"></i>
+        <span className="absolute -top-1 -right-1 bg-[#fdd835] text-black text-[10px] md:text-[11px] font-black w-6 h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center border-2 md:border-4 border-white shadow-md">{totalItems}</span>
       </button>
     );
   }
 
+  const isFormComplete = customerName.trim().length > 2 && customerPhone.trim().length > 6 && (orderType === 'pickup' || address.trim().length > 4);
+
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-end animate-fade-in">
-      <div className="absolute inset-0 bg-[#3d1a1a]/40 backdrop-blur-md" onClick={onToggle}></div>
+    <div className="fixed inset-0 z-[110] flex items-center justify-end">
+      <div className="absolute inset-0 bg-[#3d1a1a]/40 backdrop-blur-sm" onClick={onToggle}></div>
       
-      <div className="relative bg-[#f8eded] w-full max-w-lg h-full shadow-2xl flex flex-col animate-slide-left">
-        {/* Header */}
-        <div className="p-8 md:p-10 border-b border-[#e91e63]/10 flex justify-between items-center bg-white">
+      <div className="relative bg-[#f8eded] w-full max-w-lg h-[100dvh] shadow-2xl flex flex-col animate-slide-left overflow-hidden">
+        {/* Header - Fixed */}
+        <div className="shrink-0 p-6 md:p-8 border-b border-[#e91e63]/10 flex justify-between items-center bg-white z-10">
           <div>
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#e91e63]/40 block mb-1">Resumen de Selección</span>
-            <h2 className="text-3xl font-bold brand-font text-[#3d1a1a]">Su Carrito</h2>
+            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-[#e91e63]/40 block mb-0.5">Finalizar Pedido</span>
+            <h2 className="text-2xl font-bold brand-font text-[#3d1a1a]">Su Carrito</h2>
           </div>
           <button 
             onClick={onToggle} 
-            className="w-12 h-12 rounded-2xl bg-slate-50 text-slate-400 hover:text-[#e91e63] transition-all flex items-center justify-center"
+            className="w-10 h-10 rounded-xl bg-slate-50 text-slate-400 hover:text-[#e91e63] flex items-center justify-center transition-all"
           >
-            <i className="fa-solid fa-xmark text-xl"></i>
+            <i className="fa-solid fa-xmark text-lg"></i>
           </button>
         </div>
 
-        {/* Items List */}
-        <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-6 custom-scrollbar">
-          {items.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-slate-300">
-              <div className="w-24 h-24 bg-white rounded-[2rem] flex items-center justify-center shadow-inner mb-6">
-                <i className="fa-solid fa-cart-arrow-down text-3xl opacity-20"></i>
+        {/* Content Area - Scrollable */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+          
+          {/* Listado de Productos */}
+          <div className="p-6 space-y-4">
+            {items.length === 0 ? (
+              <div className="py-20 flex flex-col items-center justify-center opacity-20">
+                <i className="fa-solid fa-shopping-basket text-6xl mb-4"></i>
+                <p className="font-black text-[10px] uppercase tracking-widest">Carrito vacío</p>
               </div>
-              <p className="text-[10px] uppercase font-black tracking-widest text-center">¡Habla churre! <br/> No has pedido nada aún.</p>
-              <button 
-                onClick={onToggle}
-                className="mt-6 text-[10px] font-black uppercase text-[#e91e63] border-b-2 border-[#e91e63] pb-1 hover:brightness-110"
-              >
-                Volver a la carta
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="flex justify-between items-center mb-4">
-                 <h4 className="text-[11px] font-black uppercase text-[#3d1a1a]/30 tracking-widest">Tus antojos ({totalItems})</h4>
-                 <button onClick={onToggle} className="text-[10px] font-black text-[#e91e63] uppercase bg-pink-50 px-4 py-2 rounded-xl border border-[#e91e63]/10 hover:bg-pink-100 transition-all">Seguir Pidiendo</button>
-              </div>
-              <div className="space-y-4">
-                {items.map((item, idx) => (
-                  <div key={idx} className="bg-white p-5 rounded-[2.5rem] border border-[#e91e63]/5 shadow-sm flex items-center gap-4 animate-fade-in-up">
-                    <div className="w-16 h-16 rounded-2xl overflow-hidden bg-slate-100 shrink-0">
-                      <img src={item.image} className="w-full h-full object-cover" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-black text-[#3d1a1a] uppercase truncate">{item.name}</p>
-                      {item.selectedVariant && <p className="text-[9px] font-black text-[#e91e63] uppercase">{item.selectedVariant.name}</p>}
-                      <div className="flex items-center gap-4 mt-2">
-                         <div className="flex items-center gap-3 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
-                           <button onClick={() => onUpdateQuantity(item.id, -1, item.selectedVariant?.id)} className="text-slate-300 hover:text-[#e91e63] transition-colors"><i className="fa-solid fa-minus text-[10px]"></i></button>
-                           <span className="text-xs font-black w-4 text-center">{item.quantity}</span>
-                           <button onClick={() => onUpdateQuantity(item.id, 1, item.selectedVariant?.id)} className="text-slate-300 hover:text-[#e91e63] transition-colors"><i className="fa-solid fa-plus text-[10px]"></i></button>
-                         </div>
-                         <button onClick={() => onRemove(item.id, item.selectedVariant?.id)} className="text-slate-200 hover:text-red-500 transition-colors"><i className="fa-solid fa-trash-can text-[10px]"></i></button>
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-black text-[#3d1a1a]">S/ {((item.selectedVariant?.price || item.price) * item.quantity).toFixed(2)}</p>
+            ) : (
+              items.map((item, idx) => (
+                <div key={idx} className="bg-white p-4 rounded-[2rem] border border-[#e91e63]/5 shadow-sm flex items-center gap-4 animate-fade-in-up">
+                  <div className="w-14 h-14 rounded-2xl overflow-hidden bg-slate-100 shrink-0">
+                    <img src={item.image} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-black text-[#3d1a1a] uppercase truncate leading-tight">{item.name}</p>
+                    {item.selectedVariant && <p className="text-[9px] font-black text-[#e91e63] uppercase">{item.selectedVariant.name}</p>}
+                    <div className="flex items-center gap-4 mt-1.5">
+                       <div className="flex items-center gap-3 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
+                         <button onClick={() => onUpdateQuantity(item.id, -1, item.selectedVariant?.id)} className="text-slate-300 hover:text-[#e91e63]"><i className="fa-solid fa-minus text-[8px]"></i></button>
+                         <span className="text-[11px] font-black w-3 text-center">{item.quantity}</span>
+                         <button onClick={() => onUpdateQuantity(item.id, 1, item.selectedVariant?.id)} className="text-slate-300 hover:text-[#e91e63]"><i className="fa-solid fa-plus text-[8px]"></i></button>
+                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-xs font-black text-[#3d1a1a]">S/ {((item.selectedVariant?.price || item.price) * item.quantity).toFixed(2)}</p>
+                    <button onClick={() => onRemove(item.id, item.selectedVariant?.id)} className="text-[9px] font-black text-red-300 uppercase mt-1">Quitar</button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
 
-        {/* Checkout Form */}
-        <div className="p-8 md:p-10 bg-white border-t border-[#e91e63]/10 shadow-[0_-20px_40px_rgba(0,0,0,0.02)]">
-          <div className="space-y-5 mb-8">
-            <div className="flex bg-[#f8eded] p-1.5 rounded-[1.5rem] gap-1.5 border border-[#e91e63]/10">
+          {/* Formulario de Checkout */}
+          <div className="p-6 pt-2 bg-white/50 space-y-6">
+            <div className="flex bg-[#f8eded] p-1.5 rounded-2xl gap-1 border border-[#e91e63]/5">
               <button 
                 onClick={() => setOrderType('pickup')} 
-                className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${orderType === 'pickup' ? 'bg-[#e91e63] text-white shadow-lg shadow-pink-100' : 'text-[#e91e63]/40 hover:bg-white'}`}
+                className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${orderType === 'pickup' ? 'bg-[#e91e63] text-white shadow-md' : 'text-[#e91e63]/40'}`}
               >
-                <i className="fa-solid fa-shop"></i> RECOJO
+                RECOJO
               </button>
               <button 
                 onClick={() => setOrderType('delivery')} 
-                className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${orderType === 'delivery' ? 'bg-[#e91e63] text-white shadow-lg shadow-pink-100' : 'text-[#e91e63]/40 hover:bg-white'}`}
+                className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${orderType === 'delivery' ? 'bg-[#e91e63] text-white shadow-md' : 'text-[#e91e63]/40'}`}
               >
-                <i className="fa-solid fa-motorcycle"></i> DELIVERY
+                DELIVERY
               </button>
             </div>
 
-            <div className="space-y-4">
-              <div className="relative">
-                <i className="fa-solid fa-user absolute left-5 top-1/2 -translate-y-1/2 text-[#e91e63]/20"></i>
+            <div className="space-y-3">
+              <input 
+                type="text" 
+                placeholder="TU NOMBRE COMPLETO" 
+                className="w-full bg-white border border-[#e91e63]/5 py-4 px-6 rounded-2xl text-[10px] font-black outline-none focus:ring-2 focus:ring-[#e91e63]/20 uppercase tracking-widest shadow-sm" 
+                value={customerName} 
+                onChange={e => setCustomerName(e.target.value)} 
+              />
+              <input 
+                type="tel" 
+                placeholder="NÚMERO DE TELÉFONO" 
+                className="w-full bg-white border border-[#e91e63]/5 py-4 px-6 rounded-2xl text-[10px] font-black outline-none focus:ring-2 focus:ring-[#e91e63]/20 uppercase tracking-widest shadow-sm" 
+                value={customerPhone} 
+                onChange={e => setCustomerPhone(e.target.value)} 
+              />
+              {orderType === 'delivery' && (
                 <input 
                   type="text" 
-                  placeholder="TU NOMBRE COMPLETO" 
-                  className="w-full bg-[#f8eded] border-none py-4 pl-12 pr-6 rounded-2xl text-[10px] font-black outline-none focus:ring-2 focus:ring-[#e91e63]/20 uppercase tracking-widest" 
-                  value={customerName} 
-                  onChange={e => setCustomerName(e.target.value)} 
+                  placeholder="DIRECCIÓN DE ENTREGA" 
+                  className="w-full bg-white border border-[#e91e63]/5 py-4 px-6 rounded-2xl text-[10px] font-black outline-none focus:ring-2 focus:ring-[#e91e63]/20 uppercase tracking-widest shadow-sm animate-fade-in" 
+                  value={address} 
+                  onChange={e => setAddress(e.target.value)} 
                 />
-              </div>
-              <div className="relative">
-                <i className="fa-solid fa-phone absolute left-5 top-1/2 -translate-y-1/2 text-[#e91e63]/20"></i>
-                <input 
-                  type="tel" 
-                  placeholder="NÚMERO DE TELÉFONO" 
-                  className="w-full bg-[#f8eded] border-none py-4 pl-12 pr-6 rounded-2xl text-[10px] font-black outline-none focus:ring-2 focus:ring-[#e91e63]/20 uppercase tracking-widest" 
-                  value={customerPhone} 
-                  onChange={e => setCustomerPhone(e.target.value)} 
-                />
-              </div>
-              
-              {orderType === 'delivery' ? (
-                <div className="relative animate-fade-in-up">
-                  <i className="fa-solid fa-location-dot absolute left-5 top-1/2 -translate-y-1/2 text-[#e91e63]/20"></i>
-                  <input 
-                    type="text" 
-                    placeholder="DIRECCIÓN DE ENTREGA" 
-                    className="w-full bg-[#f8eded] border-none py-4 pl-12 pr-6 rounded-2xl text-[10px] font-black outline-none focus:ring-2 focus:ring-[#e91e63]/20 uppercase tracking-widest" 
-                    value={address} 
-                    onChange={e => setAddress(e.target.value)} 
-                  />
-                </div>
-              ) : (
-                <div className="bg-[#fdd835]/10 border border-[#fdd835]/30 p-4 rounded-2xl flex items-center gap-4 animate-fade-in-up">
-                  <div className="w-10 h-10 bg-[#fdd835] rounded-xl flex items-center justify-center text-black shadow-sm">
-                    <i className="fa-solid fa-location-pin"></i>
-                  </div>
-                  <div>
-                    <p className="text-[8px] font-black text-[#3d1a1a]/40 uppercase tracking-widest">Recoges en:</p>
-                    <p className="text-[10px] font-black text-[#3d1a1a] uppercase">{STORE_ADDRESS}</p>
-                  </div>
-                </div>
               )}
             </div>
-          </div>
 
-          <div className="flex justify-between items-end mb-8 px-2">
+            {/* SECCIÓN DE PAGO (Solo aparece si hay productos y datos básicos) */}
+            {items.length > 0 && (
+              <div className="animate-fade-in">
+                <div className={`p-5 rounded-[2.5rem] border-2 transition-all duration-500 ${hasCopied ? 'bg-green-50 border-green-200' : 'bg-[#fdd835]/10 border-dashed border-[#fdd835]'}`}>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className={`text-[9px] font-black uppercase tracking-widest ${hasCopied ? 'text-green-600' : 'text-[#3d1a1a]/60'}`}>
+                      {hasCopied ? '✓ NÚMERO COPIADO' : '🔥 1. COPIA EL NÚMERO'}
+                    </span>
+                    {hasCopied && <i className="fa-solid fa-circle-check text-green-500 text-lg"></i>}
+                  </div>
+                  
+                  <p className="text-[10px] font-bold text-[#3d1a1a]/70 leading-snug mb-4">
+                    Toca el número para copiarlo, yapea el total y mándanos la captura por WhatsApp:
+                  </p>
+                  
+                  <button 
+                    onClick={handleCopyNumber}
+                    className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all active:scale-95 ${hasCopied ? 'bg-green-500 text-white' : 'bg-white text-[#e91e63] border border-[#e91e63]/10 shadow-sm animate-pulse'}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <i className={`fa-solid ${hasCopied ? 'fa-check-double' : 'fa-copy'} text-lg`}></i>
+                      <span className="text-xl font-black tracking-widest">{whatsappNumber.replace(/\D/g, '')}</span>
+                    </div>
+                    <span className="text-[9px] font-black uppercase tracking-widest">{hasCopied ? '¡LISTO!' : 'TOCA AQUÍ'}</span>
+                  </button>
+                  
+                  {!hasCopied && (
+                    <p className="text-[8px] font-black text-[#e91e63] uppercase tracking-widest text-center mt-3 animate-pulse">
+                      ¡No olvides copiarlo para poder pagar!
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* Espaciador para no tapar el contenido con el sticky bottom */}
+            <div className="h-4"></div>
+          </div>
+        </div>
+
+        {/* Footer Actions - Sticky Bottom */}
+        <div className="shrink-0 p-6 md:p-8 bg-white border-t border-[#e91e63]/10 shadow-[0_-20px_50px_rgba(0,0,0,0.1)] z-20">
+          <div className="flex justify-between items-end mb-4">
             <div>
-              <span className="text-[10px] font-black text-[#e91e63]/40 uppercase tracking-widest block mb-1">Inversión Total</span>
-              <span className="text-4xl font-black text-[#e91e63] brand-font tracking-tighter">S/ {total.toFixed(2)}</span>
+              <span className="text-[10px] font-black text-[#e91e63]/40 uppercase tracking-widest block mb-0.5">Total a Pagar</span>
+              <span className="text-3xl font-black text-[#e91e63] brand-font tracking-tighter">S/ {total.toFixed(2)}</span>
             </div>
-            <span className="text-[10px] font-black text-[#3d1a1a]/20 uppercase tracking-[0.3em]">Incluye Sazón</span>
+            <div className="text-right">
+               <p className="text-[9px] font-black text-[#3d1a1a]/30 uppercase tracking-[0.2em]">Puesto 651</p>
+               <p className="text-[8px] font-bold text-[#3d1a1a]/20 uppercase">Surquillo</p>
+            </div>
           </div>
 
           <button 
-            disabled={!customerName || !customerPhone || (orderType === 'delivery' && !address) || items.length === 0 || isSaving} 
+            disabled={!isFormComplete || items.length === 0 || isSaving || !hasCopied} 
             onClick={handleWhatsAppOrder}
-            className="w-full bg-[#e91e63] text-white py-7 rounded-[2.5rem] text-[11px] font-black uppercase tracking-[0.3em] shadow-2xl shadow-pink-200 hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-20 flex items-center justify-center gap-4"
+            className={`w-full py-6 md:py-7 rounded-[2.5rem] text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl transition-all flex items-center justify-center gap-4 ${!hasCopied ? 'bg-slate-100 text-slate-300' : 'bg-[#e91e63] text-white shadow-pink-200 active:scale-[0.97]'} disabled:opacity-80`}
           >
             {isSaving ? (
               <i className="fa-solid fa-spinner fa-spin text-lg"></i>
             ) : (
               <>
-                <i className="fa-brands fa-whatsapp text-lg"></i>
-                <span>CONFIRMAR PEDIDO</span>
+                <i className={`fa-brands fa-whatsapp text-lg ${hasCopied ? 'animate-bounce' : ''}`}></i>
+                <span>{hasCopied ? '2. ¡PEDIR AHORA!' : 'FALTA COPIAR NÚMERO'}</span>
               </>
             )}
           </button>
         </div>
       </div>
+      
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(233, 30, 99, 0.1); border-radius: 10px; }
+      `}</style>
     </div>
   );
 };
