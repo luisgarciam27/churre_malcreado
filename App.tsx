@@ -147,6 +147,12 @@ const App: React.FC = () => {
     });
   }, [config.menu, activeCategory, searchTerm]);
 
+  const handleDirectWhatsApp = () => {
+    const msg = encodeURIComponent("¡Habla churre! Estoy viendo la carta y tengo una consulta. 🔥");
+    const cleanNumber = config.whatsappNumber.replace(/\D/g, '');
+    window.open(`https://wa.me/${cleanNumber}?text=${msg}`, '_blank');
+  };
+
   if (loading) return (
     <div className="h-screen flex flex-col items-center justify-center bg-[#f8eded]">
       <div className="loader-pink mb-4"></div>
@@ -161,7 +167,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#f8eded]">
       
-      {/* Hero / Landing - Tonos Rosa Malcriado Profundo */}
+      {/* Hero / Landing */}
       {view === 'landing' && (
         <div className="h-screen w-full relative flex items-center justify-center overflow-hidden bg-[#4a041c]">
           {config.images.slideBackgrounds.map((bg, index) => (
@@ -219,9 +225,9 @@ const App: React.FC = () => {
             </div>
           </header>
 
-          <main className="pt-32 pb-32 max-w-7xl mx-auto px-6 md:px-12">
+          <main className="pt-32 pb-16 max-w-7xl mx-auto px-6 md:px-12">
             
-            {/* MINI SLIDER DE PRODUCTOS (Reemplaza al bloque de IA) */}
+            {/* MINI SLIDER */}
             <section className="mb-16">
               <div className="bg-white p-2 rounded-[3.5rem] border-2 border-[#e91e63]/10 shadow-xl relative overflow-hidden h-[350px] md:h-[450px]">
                 <div className="absolute inset-0 bg-[#4a041c]">
@@ -235,7 +241,6 @@ const App: React.FC = () => {
                   ))}
                 </div>
                 
-                {/* Capas de diseño para el Mini Slider */}
                 <div className="absolute inset-0 bg-gradient-to-t from-[#4a041c] via-transparent to-transparent z-10"></div>
                 
                 <div className="relative z-20 h-full flex flex-col justify-end p-8 md:p-14">
@@ -246,7 +251,6 @@ const App: React.FC = () => {
                   <p className="text-white/80 font-medium text-sm md:text-lg mt-2 brand-font">Prueba nuestra sazón 100% piurana en el Mercado 2.</p>
                 </div>
 
-                {/* Indicadores mini */}
                 <div className="absolute top-8 right-8 z-30 flex flex-col gap-2">
                    {config.images.slideBackgrounds.map((_, i) => (
                       <div key={i} className={`w-1.5 rounded-full transition-all duration-500 ${miniSlideIndex === i ? 'h-8 bg-[#fdd835]' : 'h-1.5 bg-white/30'}`}></div>
@@ -299,27 +303,50 @@ const App: React.FC = () => {
             </div>
           </main>
           
-          <footer className="bg-white py-20 px-6 border-t border-[#e91e63]/5">
-            <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-12 items-center text-center md:text-left">
-               <div>
-                  <img src={config.images.logo} className="w-24 mx-auto md:mx-0 mb-6 grayscale opacity-20" />
-                  <p className="text-xs font-bold uppercase tracking-widest text-[#3d1a1a]/40">Mercado 2 de Surquillo <br/> Puesto 651 | 7am a 7pm</p>
-               </div>
-               <div className="flex flex-col gap-4">
-                  <h4 className="brand-font font-bold text-[#e91e63] text-lg uppercase tracking-widest">Síguenos</h4>
-                  <div className="flex justify-center md:justify-start gap-6">
-                    <a href={config.socialMedia.instagram} target="_blank" className="text-2xl text-[#3d1a1a]/20 hover:text-[#e91e63] transition-colors"><i className="fa-brands fa-instagram"></i></a>
-                    <a href={config.socialMedia.tiktok} target="_blank" className="text-2xl text-[#3d1a1a]/20 hover:text-[#e91e63] transition-colors"><i className="fa-brands fa-tiktok"></i></a>
+          {/* Botón Flotante Directo de WhatsApp */}
+          {!isCartOpen && (
+            <button 
+              onClick={handleDirectWhatsApp}
+              className="fixed bottom-10 left-10 w-16 h-16 bg-[#25d366] text-white rounded-full shadow-[0_15px_40px_rgba(37,211,102,0.4)] z-[90] flex items-center justify-center transition-all hover:scale-110 active:scale-95 border-4 border-white animate-pulse"
+              title="¡Habla con el Churre!"
+            >
+              <i className="fa-brands fa-whatsapp text-3xl"></i>
+            </button>
+          )}
+
+          {/* Footer Compacto */}
+          <footer className="bg-white py-8 px-6 md:px-12 border-t border-[#e91e63]/10">
+            <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6 md:gap-12">
+               
+               {/* Logo e Info */}
+               <div className="flex flex-col md:flex-row items-center gap-4 md:gap-8 text-center md:text-left">
+                  <img src={config.images.logo} className="w-16 grayscale opacity-30" />
+                  <div>
+                    <p className="text-[10px] font-black uppercase text-[#3d1a1a]/60 tracking-widest">MERCADO 2 DE SURQUILLO</p>
+                    <p className="text-[9px] font-bold text-[#3d1a1a]/30 uppercase">PUESTO 651 | 7AM A 7PM</p>
                   </div>
+               </div>
+
+               {/* Redes Sociales Centrales */}
+               <div className="flex flex-col items-center gap-3">
+                  <span className="text-[9px] font-black uppercase text-[#e91e63] tracking-[0.4em]">Síguenos</span>
+                  <div className="flex gap-8">
+                    <a href={config.socialMedia.instagram} target="_blank" className="text-xl text-[#3d1a1a]/20 hover:text-[#e91e63] transition-colors"><i className="fa-brands fa-instagram"></i></a>
+                    <a href={config.socialMedia.tiktok} target="_blank" className="text-xl text-[#3d1a1a]/20 hover:text-[#e91e63] transition-colors"><i className="fa-brands fa-tiktok"></i></a>
+                  </div>
+               </div>
+
+               {/* Copyright y Admin */}
+               <div className="flex flex-col items-center md:items-end gap-2">
                   <button 
                     onClick={() => setShowPasswordModal(true)}
-                    className="text-[10px] font-black uppercase tracking-widest text-[#e91e63]/40 hover:text-[#e91e63] transition-all mt-4 border border-dashed border-[#e91e63]/20 px-4 py-2 rounded-lg"
+                    className="text-[8px] font-black uppercase tracking-widest text-[#e91e63]/40 hover:text-[#e91e63] transition-all px-4 py-1.5 border border-dashed border-[#e91e63]/20 rounded-lg"
                   >
                     Acceso Administración
                   </button>
-               </div>
-               <div className="text-[10px] font-bold text-[#3d1a1a]/20 uppercase tracking-[0.3em] md:text-right">
-                  Llegamos a Lima para quedarnos. <br/> © 2025 Churre Malcriado.
+                  <p className="text-[8px] font-black text-[#3d1a1a]/20 uppercase tracking-[0.3em] text-center md:text-right">
+                    © 2025 CHURRE MALCRIADO.
+                  </p>
                </div>
             </div>
           </footer>
