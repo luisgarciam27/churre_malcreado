@@ -7,6 +7,7 @@ import { POSCashier } from './POSCashier';
 import { POSDashboard } from './POSDashboard';
 import { POSInventory } from './POSInventory';
 import { POSOrders } from './POSOrders';
+import { POSSettings } from './POSSettings';
 
 interface POSManagerProps {
   menu: MenuItem[];
@@ -16,7 +17,7 @@ interface POSManagerProps {
 
 export const POSManager: React.FC<POSManagerProps> = ({ menu, categories, config }) => {
   const [session, setSession] = useState<CashSession | null>(null);
-  const [view, setView] = useState<'cashier' | 'orders' | 'dashboard' | 'inventory'>('cashier');
+  const [view, setView] = useState<'cashier' | 'orders' | 'dashboard' | 'inventory' | 'settings'>('cashier');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -129,6 +130,12 @@ export const POSManager: React.FC<POSManagerProps> = ({ menu, categories, config
           >
             Inventario
           </button>
+          <button 
+            onClick={() => setView('settings')}
+            className={`px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${view === 'settings' ? 'bg-white text-[#e91e63] shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
+          >
+            Ajustes
+          </button>
         </nav>
 
         <div className="flex items-center gap-4">
@@ -147,8 +154,10 @@ export const POSManager: React.FC<POSManagerProps> = ({ menu, categories, config
           <POSOrders />
         ) : view === 'dashboard' ? (
           <POSDashboard session={session} onCloseShift={handleCloseShift} onRefresh={checkActiveSession} />
-        ) : (
+        ) : view === 'inventory' ? (
           <POSInventory menu={menu} categories={categories} />
+        ) : (
+          <POSSettings config={config} />
         )}
       </main>
     </div>

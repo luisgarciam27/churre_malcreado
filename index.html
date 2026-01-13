@@ -3,18 +3,23 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Churre Malcriado - Carta Online</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Churre Malcriado | Sanguchería Piurana</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --churre-pink: #e91e63;
+            --churre-yellow: #fdd835;
+            --churre-bg: #f8eded;
+            --churre-text: #3d1a1a;
+        }
         body {
-            font-family: 'Poppins', sans-serif;
-            background-color: #ffffff;
-            color: #1a1a1a;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--churre-bg);
+            color: var(--churre-text);
             -webkit-font-smoothing: antialiased;
-            overflow-x: hidden;
         }
         .brand-font {
             font-family: 'Fredoka', sans-serif;
@@ -22,65 +27,47 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
-
-        @keyframes zoomIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        .animate-zoom-in { animation: zoomIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-
-        @keyframes fadeInUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        .animate-fade-in-up { animation: fadeInUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-8px); }
-        }
-        .animate-float { animation: float 4s ease-in-out infinite; }
-
         .glass-header {
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(248, 237, 237, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(233, 30, 99, 0.1);
         }
 
-        .social-icon {
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            background: rgba(233, 30, 99, 0.03);
-            border: 1px solid rgba(233, 30, 99, 0.05);
+        .product-card {
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-        .social-icon:hover {
-            transform: translateY(-5px) scale(1.1);
-            background: #e91e63;
+        .product-card:hover {
+            transform: translateY(-8px);
+        }
+
+        .btn-churre {
+            background-color: var(--churre-pink);
             color: white;
-            box-shadow: 0 10px 20px rgba(233, 30, 99, 0.2);
+            transition: all 0.3s ease;
+        }
+        .btn-churre:hover {
+            filter: brightness(1.1);
+            transform: scale(1.02);
         }
 
-        .btn-shine::after {
-            content: "";
-            position: absolute;
-            top: -50%;
-            left: -60%;
-            width: 20%;
-            height: 200%;
-            background: rgba(255, 255, 255, 0.2);
-            transform: rotate(30deg);
+        /* Animación de entrada estilo Mercado */
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-        .btn-shine:hover::after {
-            animation: shine 0.75s forwards;
+        .animate-market {
+            animation: slideIn 0.8s ease-out forwards;
         }
-        @keyframes shine { 100% { left: 125%; } }
 
-        .loader {
-            width: 40px;
-            height: 40px;
-            border: 4px solid rgba(233, 30, 99, 0.1);
-            border-bottom-color: #e91e63;
+        .loader-pink {
+            width: 30px; height: 30px;
+            border: 3px solid rgba(233, 30, 99, 0.1);
+            border-top-color: var(--churre-pink);
             border-radius: 50%;
-            display: inline-block;
-            animation: rotation 1s linear infinite;
+            animation: spin 1s linear infinite;
         }
-        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
     <script type="importmap">
     {

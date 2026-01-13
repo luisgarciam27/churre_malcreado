@@ -24,100 +24,72 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({ item, on
   const currentPrice = selectedVariant ? selectedVariant.price : item.price;
 
   return (
-    <div 
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 animate-fade-in"
-      onClick={onClose}
-    >
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-md"></div>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-0 md:p-8 animate-fade-in" onClick={onClose}>
+      <div className="absolute inset-0 bg-[#3d1a1a]/40 backdrop-blur-md"></div>
       
       <div 
-        className="relative bg-white w-full max-w-2xl rounded-[3rem] overflow-hidden shadow-[0_0_100px_rgba(233,30,99,0.3)] animate-zoom-in"
+        className="relative bg-white w-full max-w-5xl h-full md:h-auto md:max-h-[85vh] md:rounded-[4rem] overflow-hidden flex flex-col md:flex-row shadow-2xl animate-zoom-in"
         onClick={(e) => e.stopPropagation()}
       >
         <button 
-          onClick={onClose}
-          className="absolute top-6 right-6 z-10 w-12 h-12 bg-white/20 hover:bg-white/40 backdrop-blur-md rounded-full flex items-center justify-center text-white transition-all active:scale-90"
+          onClick={onClose} 
+          className="absolute top-6 right-6 z-[210] w-12 h-12 bg-white text-[#e91e63] rounded-full flex items-center justify-center shadow-xl hover:scale-110 active:scale-95 transition-all"
         >
           <i className="fa-solid fa-xmark text-xl"></i>
         </button>
 
-        <div className="flex flex-col md:flex-row h-full">
-          <div className="w-full md:w-1/2 h-64 md:h-auto relative">
-            <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent md:hidden"></div>
-            {item.isCombo && (
-              <div className="absolute bottom-6 left-6">
-                <span className="bg-[#e91e63] text-white text-[10px] font-black px-6 py-2 rounded-full uppercase tracking-[0.2em] shadow-2xl border border-white/20">Combo Ahorro</span>
-              </div>
-            )}
-          </div>
+        <div className="w-full md:w-1/2 h-[45vh] md:h-full bg-pink-50">
+          <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+        </div>
 
-          <div className="w-full md:w-1/2 p-8 md:p-10 flex flex-col justify-center">
-            <div className="mb-2">
-              <span className="text-[#e91e63] text-[10px] font-black uppercase tracking-[0.3em] bg-pink-50 px-3 py-1 rounded-full">
-                {item.isCombo ? 'Promoción Especial' : item.category}
-              </span>
-            </div>
-            
-            <h2 className="text-3xl md:text-4xl font-black text-gray-800 brand-font mb-4 leading-none">
+        <div className="w-full md:w-1/2 flex flex-col bg-white overflow-y-auto">
+          <div className="p-8 md:p-14 flex-1">
+            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-[#e91e63]/30 mb-4 block">Detalle Malcriado</span>
+            <h2 className="brand-font text-4xl md:text-5xl font-bold text-[#3d1a1a] mb-6 leading-tight">
               {item.name}
             </h2>
-
-            <p className="text-gray-500 text-sm md:text-base leading-relaxed mb-6">
-              {item.description}
+            <div className="h-1 w-12 bg-[#fdd835] mb-8 rounded-full"></div>
+            <p className="text-[#3d1a1a]/60 text-base md:text-lg leading-relaxed mb-10 font-medium italic">
+              "{item.description}"
             </p>
 
-            {/* LISTA DEL COMBO */}
-            {item.isCombo && item.comboItems && item.comboItems.length > 0 && (
-              <div className="mb-8 bg-gray-50 p-6 rounded-[2rem] border border-dashed border-gray-200">
-                <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-4 block">Este combo incluye:</label>
-                <ul className="space-y-2">
-                  {item.comboItems.map((ci, i) => (
-                    <li key={i} className="flex items-center gap-3 text-xs font-bold text-gray-700">
-                      <i className="fa-solid fa-circle-check text-[#e91e63]"></i>
-                      {ci}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* SELECTOR DE VARIANTES */}
             {item.variants && item.variants.length > 0 && (
-              <div className="mb-8">
-                <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-3 block">Elige una opción:</label>
-                <div className="grid grid-cols-1 gap-2">
+              <div className="mb-10 space-y-4">
+                <label className="text-[9px] font-black uppercase text-[#e91e63] tracking-widest ml-1">Selecciona el tamaño:</label>
+                <div className="grid grid-cols-1 gap-3">
                   {item.variants.map((v) => (
                     <button 
-                      key={v.id}
-                      onClick={() => setSelectedVariant(v)}
-                      className={`flex justify-between items-center p-4 rounded-2xl border-2 transition-all ${selectedVariant?.id === v.id ? 'border-[#e91e63] bg-pink-50' : 'border-gray-100 hover:border-pink-100'}`}
+                      key={v.id} 
+                      onClick={() => setSelectedVariant(v)} 
+                      className={`flex justify-between items-center p-5 rounded-[2rem] border-2 transition-all ${selectedVariant?.id === v.id ? 'border-[#e91e63] bg-pink-50' : 'border-[#f8eded] text-[#3d1a1a]/40 hover:border-pink-50'}`}
                     >
-                      <span className={`font-bold text-xs ${selectedVariant?.id === v.id ? 'text-[#e91e63]' : 'text-gray-600'}`}>{v.name}</span>
-                      <span className="font-black text-[#e91e63] text-xs">S/ {v.price.toFixed(2)}</span>
+                      <span className="text-[11px] font-black uppercase tracking-widest">{v.name}</span>
+                      <span className="text-sm font-black">S/ {v.price.toFixed(2)}</span>
                     </button>
                   ))}
                 </div>
               </div>
             )}
-
-            <div className="mt-auto flex items-center justify-between gap-6 pt-6 border-t border-gray-50">
-              <div className="flex flex-col">
-                <span className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Precio Final</span>
-                <span className="text-3xl font-black text-[#e91e63]">S/ {currentPrice.toFixed(2)}</span>
+            
+            {item.note && (
+              <div className="p-4 bg-[#fdd835]/10 border border-[#fdd835]/30 rounded-2xl flex items-center gap-4 mb-8">
+                 <i className="fa-solid fa-calendar-day text-[#fdd835] text-xl"></i>
+                 <p className="text-[10px] font-black uppercase text-[#3d1a1a]/60">{item.note}</p>
               </div>
+            )}
+          </div>
 
-              <button 
-                onClick={() => {
-                  onAddToCart(item, selectedVariant);
-                  onClose();
-                }}
-                className="bg-[#e91e63] hover:bg-[#c2185b] text-white px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-pink-200 transition-all transform active:scale-90 flex items-center gap-3"
-              >
-                <i className="fa-solid fa-cart-plus"></i>
-                Añadir
-              </button>
+          <div className="p-8 md:p-14 border-t border-[#f8eded] flex flex-col md:flex-row items-center gap-8 bg-[#f8eded]/30">
+            <div className="flex flex-col text-center md:text-left">
+              <span className="text-[#3d1a1a]/30 text-[9px] font-black uppercase tracking-widest">A pagar</span>
+              <span className="text-4xl font-black text-[#e91e63] brand-font tracking-tighter">S/ {currentPrice.toFixed(2)}</span>
             </div>
+            <button 
+              onClick={() => { onAddToCart(item, selectedVariant); onClose(); }} 
+              className="flex-1 w-full md:w-auto bg-[#e91e63] text-white py-6 rounded-full brand-font font-bold uppercase tracking-widest shadow-2xl shadow-pink-200 active:scale-95 transition-all"
+            >
+              ¡Al Carro!
+            </button>
           </div>
         </div>
       </div>

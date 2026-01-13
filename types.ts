@@ -46,20 +46,21 @@ export interface AppConfig {
   paymentName?: string;
 }
 
-// POS Types
+// Fix: Added missing CashSession interface for POS shift management
 export interface CashSession {
   id: number;
-  opened_at: string;
-  closed_at?: string;
+  user_name: string;
+  status: 'open' | 'closed';
   opening_balance: number;
-  closing_balance?: number;
   total_sales: number;
   total_entry: number;
   total_exit: number;
-  status: 'open' | 'closed';
-  user_name: string;
+  opened_at: string;
+  closed_at?: string;
+  closing_balance?: number;
 }
 
+// Fix: Added missing CashTransaction interface for recording money movements
 export interface CashTransaction {
   id: number;
   session_id: number;
