@@ -39,6 +39,9 @@ const App: React.FC = () => {
   ]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<'landing' | 'menu' | 'admin'>('landing');
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [adminPassword, setAdminPassword] = useState('');
+  
   const [activeCategory, setActiveCategory] = useState<string>('Todos');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -52,7 +55,6 @@ const App: React.FC = () => {
   const [isAskingAi, setIsAskingAi] = useState(false);
   const [recommendedIds, setRecommendedIds] = useState<string[]>([]);
 
-  // Lógica del Slider Premium con intervalo de 6 segundos
   useEffect(() => {
     if (view === 'landing' && config.images.slideBackgrounds.length > 1) {
       const timer = setInterval(() => {
@@ -85,6 +87,8 @@ const App: React.FC = () => {
         const mapped = menuRes.data.map((item: any) => ({
           ...item,
           isPopular: item.is_popular,
+          isCombo: item.is_combo,
+          variants: item.variants || [], // Aseguramos que las variantes se carguen
           image: item.image || 'https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?q=60&w=800'
         }));
         setConfig(prev => ({ ...prev, menu: mapped }));
@@ -101,11 +105,22 @@ const App: React.FC = () => {
 
     const params = new URLSearchParams(window.location.search);
     if (params.get('admin') === 'true') {
-      setView('admin');
+      setShowPasswordModal(true);
     }
 
     return () => window.removeEventListener('scroll', handleScroll);
   }, [loadData]);
+
+  const handleAdminAccess = () => {
+    if (adminPassword === 'admin123') {
+      setView('admin');
+      setShowPasswordModal(false);
+      setAdminPassword('');
+    } else {
+      alert("⚠️ ¡Habla sobrino! Esa clave no es la malcriada.");
+      setAdminPassword('');
+    }
+  };
 
   const addToCart = useCallback((item: MenuItem, variant?: ItemVariant) => {
     setCart(prev => {
@@ -152,7 +167,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#f8eded]">
       
-      {/* Landing / Premium Interactive Slider con tonos Rosa Malcriado Profundo */}
+      {/* Hero / Landing - Tonos Rosa Malcriado Profundo */}
       {view === 'landing' && (
         <div className="h-screen w-full relative flex items-center justify-center overflow-hidden bg-[#4a041c]">
           {config.images.slideBackgrounds.map((bg, index) => (
@@ -168,9 +183,7 @@ const App: React.FC = () => {
             </div>
           ))}
           
-          {/* Capa de color marca degradada (Rosa Vino Profundo para que resalte el logo) */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#4a041c] via-[#e91e63]/10 to-[#4a041c]/80 z-10"></div>
-          <div className="absolute inset-0 bg-[#e91e63]/5 mix-blend-color z-15"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-[#4a041c] via-[#e91e63]/20 to-[#4a041c]/90 z-10"></div>
 
           <div className="relative z-20 text-center px-6 max-w-4xl animate-market">
             <img src={config.images.logo} className="w-48 md:w-64 mx-auto mb-10 drop-shadow-[0_0_50px_rgba(233,30,99,0.7)]" />
@@ -191,7 +204,6 @@ const App: React.FC = () => {
               </button>
             </div>
             
-            {/* Indicadores del slider con color amarillo piurano */}
             <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex gap-3">
               {config.images.slideBackgrounds.map((_, i) => (
                 <button 
@@ -207,7 +219,6 @@ const App: React.FC = () => {
 
       {view === 'menu' && (
         <div className="animate-market">
-          {/* Header Responsivo */}
           <header className={`fixed top-0 inset-x-0 z-[100] transition-all duration-300 ${scrolled ? 'glass-header py-3 shadow-md' : 'bg-transparent py-6'}`}>
             <div className="max-w-7xl mx-auto px-6 md:px-12 flex justify-between items-center">
               <div className="flex items-center gap-4 cursor-pointer" onClick={() => setView('landing')}>
@@ -225,7 +236,7 @@ const App: React.FC = () => {
           </header>
 
           <main className="pt-32 pb-32 max-w-7xl mx-auto px-6 md:px-12">
-            {/* AI Concierge y contenido del menú */}
+            {/* AI Advisor */}
             <section className="mb-16">
               <div className="bg-white p-8 md:p-12 rounded-[3rem] border-2 border-[#e91e63]/10 shadow-xl relative overflow-hidden">
                 <div className="relative z-10 grid md:grid-cols-5 gap-8 items-center">
@@ -259,7 +270,7 @@ const App: React.FC = () => {
               </div>
             </section>
 
-            {/* Filtros */}
+            {/* Categorías y Filtros */}
             <div className="mb-12 flex flex-col md:flex-row md:items-center justify-between gap-8">
               <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
                 <button 
@@ -292,19 +303,14 @@ const App: React.FC = () => {
 
             {/* Grid de Productos */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-8">
-              {filteredMenu.length > 0 ? filteredMenu.map(item => (
+              {filteredMenu.map(item => (
                 <MenuItemCard 
                   key={item.id} 
                   item={item} 
                   onAddToCart={(it) => addToCart(it)} 
                   onShowDetails={() => setSelectedItem(item)} 
                 />
-              )) : (
-                <div className="col-span-full py-20 text-center opacity-30">
-                  <i className="fa-solid fa-face-frown text-6xl mb-4 text-[#e91e63]"></i>
-                  <p className="brand-font font-bold text-xl text-[#3d1a1a]">No encontré ese antojito, churre.</p>
-                </div>
-              )}
+              ))}
             </div>
           </main>
           
@@ -321,7 +327,7 @@ const App: React.FC = () => {
                     <a href={config.socialMedia.tiktok} target="_blank" className="text-2xl text-[#3d1a1a]/20 hover:text-[#e91e63] transition-colors"><i className="fa-brands fa-tiktok"></i></a>
                   </div>
                   <button 
-                    onClick={() => setView('admin')}
+                    onClick={() => setShowPasswordModal(true)}
                     className="text-[10px] font-black uppercase tracking-widest text-[#e91e63]/40 hover:text-[#e91e63] transition-all mt-4 border border-dashed border-[#e91e63]/20 px-4 py-2 rounded-lg"
                   >
                     Acceso Administración
@@ -332,29 +338,67 @@ const App: React.FC = () => {
                </div>
             </div>
           </footer>
-
-          {selectedItem && (
-            <ProductDetailModal 
-              item={selectedItem} 
-              onClose={() => setSelectedItem(null)} 
-              onAddToCart={(item, variant) => { addToCart(item, variant); setSelectedItem(null); }} 
-            />
-          )}
-
-          <Cart 
-            items={cart} 
-            isOpen={isCartOpen} 
-            onToggle={() => setIsCartOpen(!isCartOpen)} 
-            onRemove={(id, vId) => setCart(prev => prev.filter(i => !(i.id === id && i.selectedVariant?.id === vId)))} 
-            onUpdateQuantity={(id, delta, vId) => { setCart(prev => prev.map(i => (i.id === id && i.selectedVariant?.id === vId) ? { ...i, quantity: Math.max(1, i.quantity + delta) } : i)); }} 
-            onClearCart={() => setCart([])} 
-            initialModality={'pickup'} 
-            whatsappNumber={config.whatsappNumber} 
-            paymentQr={config.paymentQr} 
-            paymentName={config.paymentName} 
-          />
         </div>
       )}
+
+      {/* Modal de Password Admin */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 bg-[#4a041c]/90 backdrop-blur-xl animate-fade-in">
+          <div className="bg-white w-full max-w-sm rounded-[3rem] p-10 shadow-2xl animate-zoom-in text-center">
+            <div className="w-20 h-20 bg-pink-50 text-[#e91e63] rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl">
+              <i className="fa-solid fa-lock text-3xl"></i>
+            </div>
+            <h3 className="brand-font text-2xl font-bold text-slate-800 mb-2">Acceso Reservado</h3>
+            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-8">Solo personal malcriado</p>
+            
+            <input 
+              autoFocus
+              type="password" 
+              placeholder="Contraseña"
+              className="w-full bg-slate-50 border-2 border-slate-100 p-5 rounded-2xl font-black text-center text-xl outline-none focus:border-[#e91e63]/20 transition-all mb-6"
+              value={adminPassword}
+              onChange={e => setAdminPassword(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAdminAccess()}
+            />
+            
+            <div className="flex gap-4">
+              <button 
+                onClick={() => setShowPasswordModal(false)}
+                className="flex-1 py-4 text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={handleAdminAccess}
+                className="flex-1 py-4 bg-[#e91e63] text-white rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-pink-100 active:scale-95 transition-all"
+              >
+                Ingresar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedItem && (
+        <ProductDetailModal 
+          item={selectedItem} 
+          onClose={() => setSelectedItem(null)} 
+          onAddToCart={(item, variant) => { addToCart(item, variant); setSelectedItem(null); }} 
+        />
+      )}
+
+      <Cart 
+        items={cart} 
+        isOpen={isCartOpen} 
+        onToggle={() => setIsCartOpen(!isCartOpen)} 
+        onRemove={(id, vId) => setCart(prev => prev.filter(i => !(i.id === id && i.selectedVariant?.id === vId)))} 
+        onUpdateQuantity={(id, delta, vId) => { setCart(prev => prev.map(i => (i.id === id && i.selectedVariant?.id === vId) ? { ...i, quantity: Math.max(1, i.quantity + delta) } : i)); }} 
+        onClearCart={() => setCart([])} 
+        initialModality={'pickup'} 
+        whatsappNumber={config.whatsappNumber} 
+        paymentQr={config.paymentQr} 
+        paymentName={config.paymentName} 
+      />
     </div>
   );
 };
