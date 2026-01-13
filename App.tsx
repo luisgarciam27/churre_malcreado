@@ -49,17 +49,24 @@ const App: React.FC = () => {
   const [scrolled, setScrolled] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [miniSlideIndex, setMiniSlideIndex] = useState(0);
 
-  const [displayedAiText, setDisplayedAiText] = useState<string>("");
-  const [userInput, setUserInput] = useState("");
-  const [isAskingAi, setIsAskingAi] = useState(false);
-  const [recommendedIds, setRecommendedIds] = useState<string[]>([]);
-
+  // Lógica del Slider Hero
   useEffect(() => {
     if (view === 'landing' && config.images.slideBackgrounds.length > 1) {
       const timer = setInterval(() => {
         setCurrentSlide(prev => (prev + 1) % config.images.slideBackgrounds.length);
       }, 6000);
+      return () => clearInterval(timer);
+    }
+  }, [view, config.images.slideBackgrounds]);
+
+  // Lógica del Mini Slider en el menú
+  useEffect(() => {
+    if (view === 'menu' && config.images.slideBackgrounds.length > 1) {
+      const timer = setInterval(() => {
+        setMiniSlideIndex(prev => (prev + 1) % config.images.slideBackgrounds.length);
+      }, 5000);
       return () => clearInterval(timer);
     }
   }, [view, config.images.slideBackgrounds]);
@@ -88,7 +95,7 @@ const App: React.FC = () => {
           ...item,
           isPopular: item.is_popular,
           isCombo: item.is_combo,
-          variants: item.variants || [], // Aseguramos que las variantes se carguen
+          variants: item.variants || [],
           image: item.image || 'https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?q=60&w=800'
         }));
         setConfig(prev => ({ ...prev, menu: mapped }));
@@ -122,36 +129,23 @@ const App: React.FC = () => {
     }
   };
 
-  const addToCart = useCallback((item: MenuItem, variant?: ItemVariant) => {
+  const addToCart = useCallback((item: MenuItem, variant?: ItemVariant, quantity: number = 1) => {
     setCart(prev => {
       const existing = prev.find(i => i.id === item.id && i.selectedVariant?.id === variant?.id);
       if (existing) {
-        return prev.map(i => (i.id === item.id && i.selectedVariant?.id === variant?.id) ? { ...i, quantity: i.quantity + 1 } : i);
+        return prev.map(i => (i.id === item.id && i.selectedVariant?.id === variant?.id) ? { ...i, quantity: i.quantity + quantity } : i);
       }
-      return [...prev, { ...item, quantity: 1, selectedVariant: variant }];
+      return [...prev, { ...item, quantity, selectedVariant: variant }];
     });
   }, []);
-
-  const handleAskAi = async () => {
-    if (!userInput.trim() || isAskingAi) return;
-    setIsAskingAi(true);
-    setDisplayedAiText("... El Churre está buscando en la cocina ...");
-    try {
-      const response = await getRecommendation(userInput, config.menu);
-      setRecommendedIds(response.suggestedItemIds);
-      setDisplayedAiText(response.recommendationText);
-    } catch (e) { setDisplayedAiText("¡Habla churre! Se me quemó el arroz, pídeme de nuevo."); }
-    finally { setIsAskingAi(false); setUserInput(""); }
-  };
 
   const filteredMenu = useMemo(() => {
     return config.menu.filter(item => {
       const matchesCategory = activeCategory === 'Todos' || item.category === activeCategory;
       const matchesSearch = (item.name || "").toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesAi = recommendedIds.length === 0 || recommendedIds.includes(item.id);
-      return matchesCategory && matchesSearch && matchesAi;
+      return matchesCategory && matchesSearch;
     });
-  }, [config.menu, activeCategory, searchTerm, recommendedIds]);
+  }, [config.menu, activeCategory, searchTerm]);
 
   if (loading) return (
     <div className="h-screen flex flex-col items-center justify-center bg-[#f8eded]">
@@ -203,16 +197,6 @@ const App: React.FC = () => {
                 <i className="fa-solid fa-arrow-right text-lg group-hover:translate-x-2 transition-transform"></i>
               </button>
             </div>
-            
-            <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex gap-3">
-              {config.images.slideBackgrounds.map((_, i) => (
-                <button 
-                  key={i}
-                  onClick={() => setCurrentSlide(i)}
-                  className={`h-1.5 rounded-full transition-all duration-500 ${currentSlide === i ? 'w-10 bg-[#fdd835]' : 'w-3 bg-white/30 hover:bg-white/50'}`}
-                />
-              ))}
-            </div>
           </div>
         </div>
       )}
@@ -236,36 +220,37 @@ const App: React.FC = () => {
           </header>
 
           <main className="pt-32 pb-32 max-w-7xl mx-auto px-6 md:px-12">
-            {/* AI Advisor */}
+            
+            {/* MINI SLIDER DE PRODUCTOS (Reemplaza al bloque de IA) */}
             <section className="mb-16">
-              <div className="bg-white p-8 md:p-12 rounded-[3rem] border-2 border-[#e91e63]/10 shadow-xl relative overflow-hidden">
-                <div className="relative z-10 grid md:grid-cols-5 gap-8 items-center">
-                  <div className="md:col-span-2">
-                    <h3 className="brand-font text-3xl text-[#e91e63] font-bold mb-4">¡Habla sobrino!</h3>
-                    <p className="text-[#3d1a1a]/60 text-sm mb-6">Dime qué tienes hambre y el Churre te recomienda lo mejor del Mercado.</p>
-                    <div className="relative">
-                      <input 
-                        type="text" 
-                        placeholder="Quiero algo con chifles..." 
-                        className="w-full bg-[#f8eded] border-none py-4 px-6 rounded-2xl outline-none focus:ring-2 focus:ring-[#e91e63]/20 transition-all font-medium text-sm"
-                        value={userInput}
-                        onChange={e => setUserInput(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && handleAskAi()}
-                      />
-                      <button onClick={handleAskAi} className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-[#e91e63] text-white rounded-xl flex items-center justify-center active:scale-90 transition-all">
-                        <i className={`fa-solid ${isAskingAi ? 'fa-spinner fa-spin' : 'fa-wand-sparkles'}`}></i>
-                      </button>
+              <div className="bg-white p-2 rounded-[3.5rem] border-2 border-[#e91e63]/10 shadow-xl relative overflow-hidden h-[350px] md:h-[450px]">
+                <div className="absolute inset-0 bg-[#4a041c]">
+                  {config.images.slideBackgrounds.map((bg, index) => (
+                    <div 
+                      key={index}
+                      className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${miniSlideIndex === index ? 'opacity-70' : 'opacity-0'}`}
+                    >
+                      <img src={bg} className="w-full h-full object-cover" />
                     </div>
-                  </div>
-                  <div className="md:col-span-3 min-h-[80px] flex items-center bg-[#fdd835]/10 p-6 rounded-3xl border border-[#fdd835]/20">
-                    {displayedAiText ? (
-                      <p className="text-[#3d1a1a] text-lg italic brand-font animate-fade-in leading-relaxed">
-                        "{displayedAiText}"
-                      </p>
-                    ) : (
-                      <p className="text-[#3d1a1a]/40 text-xs font-bold uppercase tracking-widest text-center w-full">Asesoría Gastronómica Piurana Activa</p>
-                    )}
-                  </div>
+                  ))}
+                </div>
+                
+                {/* Capas de diseño para el Mini Slider */}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#4a041c] via-transparent to-transparent z-10"></div>
+                
+                <div className="relative z-20 h-full flex flex-col justify-end p-8 md:p-14">
+                  <span className="bg-[#fdd835] text-black text-[10px] font-black uppercase px-4 py-2 rounded-xl w-fit mb-4 shadow-lg border-2 border-white">🔥 Recomendación Malcriada</span>
+                  <h3 className="brand-font text-4xl md:text-6xl text-white font-bold tracking-tighter drop-shadow-lg">
+                    Sabor que te <br/> <span className="text-[#fdd835]">enamora</span>
+                  </h3>
+                  <p className="text-white/80 font-medium text-sm md:text-lg mt-2 brand-font">Prueba nuestra sazón 100% piurana en el Mercado 2.</p>
+                </div>
+
+                {/* Indicadores mini */}
+                <div className="absolute top-8 right-8 z-30 flex flex-col gap-2">
+                   {config.images.slideBackgrounds.map((_, i) => (
+                      <div key={i} className={`w-1.5 rounded-full transition-all duration-500 ${miniSlideIndex === i ? 'h-8 bg-[#fdd835]' : 'h-1.5 bg-white/30'}`}></div>
+                   ))}
                 </div>
               </div>
             </section>
@@ -274,16 +259,16 @@ const App: React.FC = () => {
             <div className="mb-12 flex flex-col md:flex-row md:items-center justify-between gap-8">
               <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
                 <button 
-                  onClick={() => { setActiveCategory('Todos'); setRecommendedIds([]); }} 
-                  className={`px-8 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-all whitespace-nowrap border-2 ${activeCategory === 'Todos' && recommendedIds.length === 0 ? 'bg-[#e91e63] text-white border-[#e91e63]' : 'bg-white text-[#e91e63] border-white hover:border-[#e91e63]/20 shadow-sm'}`}
+                  onClick={() => { setActiveCategory('Todos'); }} 
+                  className={`px-8 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-all whitespace-nowrap border-2 ${activeCategory === 'Todos' ? 'bg-[#e91e63] text-white border-[#e91e63]' : 'bg-white text-[#e91e63] border-white hover:border-[#e91e63]/20 shadow-sm'}`}
                 >
                   Toda la Carta
                 </button>
                 {categories.map(cat => (
                   <button 
                     key={cat.id} 
-                    onClick={() => { setActiveCategory(cat.name); setRecommendedIds([]); }} 
-                    className={`px-8 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-all whitespace-nowrap border-2 ${activeCategory === cat.name && recommendedIds.length === 0 ? 'bg-[#e91e63] text-white border-[#e91e63]' : 'bg-white text-[#e91e63] border-white hover:border-[#e91e63]/20 shadow-sm'}`}
+                    onClick={() => { setActiveCategory(cat.name); }} 
+                    className={`px-8 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-all whitespace-nowrap border-2 ${activeCategory === cat.name ? 'bg-[#e91e63] text-white border-[#e91e63]' : 'bg-white text-[#e91e63] border-white hover:border-[#e91e63]/20 shadow-sm'}`}
                   >
                     {cat.name}
                   </button>
@@ -383,7 +368,7 @@ const App: React.FC = () => {
         <ProductDetailModal 
           item={selectedItem} 
           onClose={() => setSelectedItem(null)} 
-          onAddToCart={(item, variant) => { addToCart(item, variant); setSelectedItem(null); }} 
+          onAddToCart={(item, variant, qty) => { addToCart(item, variant, qty); setSelectedItem(null); }} 
         />
       )}
 
