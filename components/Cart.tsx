@@ -1,270 +1,383 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { X, Trash2, Minus, Plus, Copy, Check, Bike, Store, ShoppingBag, ArrowRight } from 'lucide-react';
 import { CartItem } from '../types';
-import { supabase } from '../services/supabaseClient';
 
 interface CartProps {
   items: CartItem[];
-  onRemove: (id: string, variantId?: string) => void;
-  onUpdateQuantity: (id: string, delta: number, variantId?: string) => void;
-  onClearCart: () => void;
   isOpen: boolean;
-  onToggle: () => void;
-  initialModality: 'delivery' | 'pickup';
+  onClose: () => void;
+  onRemove: (cartItemId: string) => void;
+  onUpdateQuantity: (cartItemId: string, delta: number) => void;
+  onClearCart: () => void;
+  modality: 'delivery' | 'pickup';
+  onToggleModality: (m: 'delivery' | 'pickup') => void;
   whatsappNumber: string;
-  paymentQr?: string;
-  paymentName?: string;
 }
 
-type OrderType = 'delivery' | 'pickup';
-
-export const Cart: React.FC<CartProps> = ({ 
-  items, onRemove, onUpdateQuantity, onClearCart, isOpen, onToggle, 
-  initialModality, whatsappNumber, paymentQr, paymentName 
+export const Cart: React.FC<CartProps> = ({
+  items,
+  isOpen,
+  onClose,
+  onRemove,
+  onUpdateQuantity,
+  onClearCart,
+  modality,
+  onToggleModality,
+  whatsappNumber
 }) => {
-  const [orderType, setOrderType] = useState<OrderType>(initialModality);
-  const [address, setAddress] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
-  const [hasCopied, setHasCopied] = useState(false);
+  const [address, setAddress] = useState('');
+  const [reference, setReference] = useState('');
+  const [hasCopiedPayment, setHasCopiedPayment] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  const STORE_ADDRESS = "Mercado 2 de Surquillo, Puesto 651";
-
-  useEffect(() => {
-    setOrderType(initialModality);
-    if (isOpen && !isSuccess) setHasCopied(false);
-  }, [initialModality, isOpen, isSuccess]);
+  if (!isOpen) return null;
 
   const total = items.reduce((sum, item) => {
-    const price = item.selectedVariant ? item.selectedVariant.price : item.price;
-    return sum + price * item.quantity;
+    const unitPrice = item.selectedVariant ? item.selectedVariant.price : item.price;
+    return sum + unitPrice * item.quantity;
   }, 0);
-  
-  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+  const totalItemsCount = items.reduce((sum, i) => sum + i.quantity, 0);
 
-  const handleCopyNumber = () => {
-    const cleanNumber = whatsappNumber.replace(/\D/g, '');
-    navigator.clipboard.writeText(cleanNumber);
-    setHasCopied(true);
+  const cleanWhatsappNumber = whatsappNumber.replace(/\D/g, '');
+
+  const handleCopyPayment = () => {
+    navigator.clipboard.writeText(cleanWhatsappNumber);
+    setHasCopiedPayment(true);
+    setTimeout(() => setHasCopiedPayment(false), 4000);
+  };
+
+  const handleSendOrder = () => {
+    if (!customerName.trim() || !customerPhone.trim()) {
+      alert('Por favor ingresa tu nombre y número de teléfono para procesar tu pedido.');
+      return;
+    }
+
+    if (modality === 'delivery' && !address.trim()) {
+      alert('Por favor indica tu dirección de entrega.');
+      return;
+    }
+
+    let msg = `*¡HOLA CHURRE MALCRIADO! DESEO REALIZAR UN PEDIDO:* 🔥\n\n`;
+    msg += `👤 *Cliente:* ${customerName.trim()}\n`;
+    msg += `📱 *Teléfono:* ${customerPhone.trim()}\n`;
+    msg += `📍 *Modalidad:* ${modality === 'delivery' ? '🛵 Delivery' : '🏬 Retiro en Local (Mercado 2 de Surquillo Puesto 651)'}\n`;
+    if (modality === 'delivery') {
+      msg += `🏠 *Dirección:* ${address.trim()}${reference ? ` (Ref: ${reference.trim()})` : ''}\n`;
+    }
+    msg += `\n*DETALLE DE TU BANQUETE:*\n`;
+    items.forEach((item) => {
+      const price = item.selectedVariant ? item.selectedVariant.price : item.price;
+      msg += `• ${item.quantity}x ${item.name}`;
+      if (item.selectedVariant) {
+        msg += ` [${item.selectedVariant.name}]`;
+      }
+      msg += ` - S/ ${(price * item.quantity).toFixed(2)}\n`;
+      if (item.selectedSauces && item.selectedSauces.length > 0) {
+        msg += `   └ Salsas: ${item.selectedSauces.join(', ')}\n`;
+      }
+      if (item.specialInstructions) {
+        msg += `   └ Nota: "${item.specialInstructions}"\n`;
+      }
+    });
+
+    msg += `\n*TOTAL A PAGAR: S/ ${total.toFixed(2)}*\n\n`;
+    msg += `_Adjuntaré el comprobante de Yape/Plin a este chat._ 🌶️`;
+
+    const encoded = encodeURIComponent(msg);
+    window.open(`https://wa.me/${cleanWhatsappNumber}?text=${encoded}`, '_blank');
+    setIsSuccess(true);
   };
 
   const handleResetAfterOrder = () => {
     setIsSuccess(false);
     onClearCart();
-    onToggle();
-    setAddress('');
-    setCustomerName('');
-    setCustomerPhone('');
-    setHasCopied(false);
+    onClose();
   };
-
-  const handleWhatsAppOrder = async () => {
-    if (!customerName || !customerPhone || (orderType === 'delivery' && !address)) {
-      alert("¡Habla sobrino! Completa todos los datos para llevarte tu pedido.");
-      return;
-    }
-
-    if (!hasCopied) return;
-
-    setIsSaving(true);
-    try {
-      await supabase.from('orders').insert({
-        customer_name: customerName,
-        customer_phone: customerPhone,
-        items: items.map(i => ({ 
-          name: i.name, 
-          quantity: i.quantity, 
-          price: i.selectedVariant ? i.selectedVariant.price : i.price,
-          variant: i.selectedVariant?.name || null
-        })),
-        total: total,
-        modality: orderType,
-        address: orderType === 'delivery' ? address : 'Tienda Principal',
-        status: 'Pendiente',
-        order_origin: 'Web'
-      });
-    } catch (e) { 
-      console.error("Error saving order:", e); 
-    }
-
-    const message = encodeURIComponent(
-      `*PEDIDO MALCRIADO - WEB*\n\n` +
-      `🔥 *Cliente:* ${customerName}\n` +
-      `📞 *Teléfono:* ${customerPhone}\n` +
-      `📍 *Modo:* ${orderType === 'delivery' ? '🚀 Delivery' : '🏪 Recojo en Tienda'}\n` +
-      (orderType === 'delivery' ? `🏠 *Dirección:* ${address}\n` : `🏢 *Punto:* ${STORE_ADDRESS}\n`) +
-      `\n*DETALLE DEL BANQUETE:*\n` +
-      items.map(i => `• ${i.quantity}x ${i.name} ${i.selectedVariant ? `(${i.selectedVariant.name})` : ''} - S/ ${((i.selectedVariant?.price || i.price) * i.quantity).toFixed(2)}`).join('\n') +
-      `\n\n*TOTAL A PAGAR: S/ ${total.toFixed(2)}*\n` +
-      `\n--------------------------------\n` +
-      `_¡Churre, ya copié el número de pago! Aquí te mando el pedido para yapearte y mandar la captura._ 🌶️`
-    );
-
-    const cleanNumber = whatsappNumber.replace(/\D/g, '');
-    window.open(`https://wa.me/${cleanNumber}?text=${message}`, '_blank');
-    
-    setIsSaving(false);
-    setIsSuccess(true);
-  };
-
-  if (!isOpen) {
-    if (totalItems === 0) return null;
-    return (
-      <button 
-        onClick={onToggle} 
-        className="fixed bottom-6 right-6 md:bottom-10 md:right-10 bg-[#e91e63] text-white w-16 h-16 md:w-20 md:h-20 rounded-full shadow-[0_15px_30px_rgba(233,30,99,0.4)] z-50 flex items-center justify-center transition-all hover:scale-110 active:scale-95 animate-bounce-slow"
-      >
-        <i className="fa-solid fa-basket-shopping text-xl md:text-2xl"></i>
-        <span className="absolute -top-1 -right-1 bg-[#fdd835] text-black text-[10px] md:text-[11px] font-black w-6 h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center border-2 md:border-4 border-white shadow-md">{totalItems}</span>
-      </button>
-    );
-  }
-
-  const isFormComplete = customerName.trim().length > 2 && customerPhone.trim().length > 6 && (orderType === 'pickup' || address.trim().length > 4);
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-end">
-      <div className="absolute inset-0 bg-[#3d1a1a]/40 backdrop-blur-sm" onClick={onToggle}></div>
-      
-      <div className="relative bg-[#f8eded] w-full max-w-lg h-[100dvh] shadow-2xl flex flex-col animate-slide-left overflow-hidden">
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-xs" onClick={onClose}></div>
+
+      <div className="relative bg-white w-full max-w-md h-full shadow-2xl flex flex-col z-10 animate-fade-fast">
         
-        {isSuccess ? (
-          /* PANTALLA DE ÉXITO */
-          <div className="flex-1 flex flex-col items-center justify-center p-10 text-center animate-fade-in bg-white">
-            <div className="w-24 h-24 bg-green-500 text-white rounded-[2.5rem] flex items-center justify-center mb-8 shadow-2xl shadow-green-200 animate-zoom-in">
-              <i className="fa-solid fa-check text-5xl"></i>
+        {/* Header */}
+        <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-white">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-[#fdf2f5] text-[#e51d5a] flex items-center justify-center">
+              <ShoppingBag className="w-4 h-4" />
             </div>
-            
-            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-green-500 mb-2">¡Pedido Realizado!</span>
-            <h2 className="text-4xl font-bold brand-font text-[#3d1a1a] mb-6 tracking-tighter">¡Gracias por tu compra, churre!</h2>
-            
-            <div className="p-6 bg-[#f8eded] rounded-[2rem] border border-[#e91e63]/5 mb-10 max-w-xs">
-              <p className="text-xs font-bold text-[#3d1a1a]/60 leading-relaxed italic">
-                "No olvides enviar el mensaje que se abrió en tu WhatsApp y adjuntar la captura de tu yapeo para empezar a cocinar."
+            <div>
+              <h3 className="brand-font text-base font-bold text-slate-900">
+                Tu Carrito ({totalItemsCount})
+              </h3>
+              <p className="text-[11px] text-slate-500">
+                {modality === 'delivery' ? 'Delivery a Domicilio' : 'Retiro en Local'}
               </p>
             </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
 
-            <button 
+        {isSuccess ? (
+          /* Pantalla de Éxito */
+          <div className="flex-1 p-6 flex flex-col items-center justify-center text-center">
+            <div className="w-20 h-20 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-4 shadow-sm">
+              <Check className="w-10 h-10" />
+            </div>
+            <h3 className="brand-font text-2xl font-black text-slate-900">
+              ¡Pedido Enviado, Churre!
+            </h3>
+            <p className="text-xs text-slate-600 max-w-xs mt-2 leading-relaxed">
+              Tu mensaje se abrió en WhatsApp. Envía el mensaje con tu comprobante de Yape o Plin para empezar a cocinar tu banquete de inmediato.
+            </p>
+
+            <div className="mt-6 p-4 rounded-2xl bg-[#fdf2f5] border border-[#e51d5a]/25 text-left w-full text-xs text-[#e51d5a]">
+              <p className="font-bold">Total a Transferir:</p>
+              <p className="text-2xl font-black mt-0.5">S/ {total.toFixed(2)}</p>
+              <p className="text-[11px] opacity-80 mt-1">Yape / Plin: {cleanWhatsappNumber}</p>
+            </div>
+
+            <button
               onClick={handleResetAfterOrder}
-              className="w-full max-w-xs py-6 bg-[#e91e63] text-white rounded-[2rem] font-black uppercase tracking-[0.2em] text-[11px] shadow-2xl shadow-pink-200 hover:scale-105 active:scale-95 transition-all"
+              className="mt-8 w-full py-3.5 bg-[#e51d5a] text-white rounded-2xl text-xs font-extrabold uppercase tracking-wider shadow-md hover:bg-[#cf154e]"
             >
               Hacer otro pedido
             </button>
           </div>
         ) : (
-          /* FLUJO NORMAL DEL CARRITO */
+          /* Flujo del Carrito */
           <>
-            <div className="shrink-0 p-6 md:p-8 border-b border-[#e91e63]/10 flex justify-between items-center bg-white z-10">
-              <div>
-                <span className="text-[9px] font-black uppercase tracking-[0.3em] text-[#e91e63]/40 block mb-0.5">Finalizar Pedido</span>
-                <h2 className="text-2xl font-bold brand-font text-[#3d1a1a]">Su Carrito</h2>
-              </div>
-              <button 
-                onClick={onToggle} 
-                className="w-10 h-10 rounded-xl bg-slate-50 text-slate-400 hover:text-[#e91e63] flex items-center justify-center transition-all"
-              >
-                <i className="fa-solid fa-xmark text-lg"></i>
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto custom-scrollbar">
-              <div className="p-6 space-y-4">
-                {items.length === 0 ? (
-                  <div className="py-20 flex flex-col items-center justify-center opacity-20">
-                    <i className="fa-solid fa-shopping-basket text-6xl mb-4"></i>
-                    <p className="font-black text-[10px] uppercase tracking-widest">Carrito vacío</p>
-                  </div>
-                ) : (
-                  items.map((item, idx) => (
-                    <div key={idx} className="bg-white p-4 rounded-[2rem] border border-[#e91e63]/5 shadow-sm flex items-center gap-4 animate-fade-in-up">
-                      <div className="w-14 h-14 rounded-2xl overflow-hidden bg-slate-100 shrink-0">
-                        <img src={item.image} className="w-full h-full object-cover" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[11px] font-black text-[#3d1a1a] uppercase truncate leading-tight">{item.name}</p>
-                        {item.selectedVariant && <p className="text-[9px] font-black text-[#e91e63] uppercase">{item.selectedVariant.name}</p>}
-                        <div className="flex items-center gap-4 mt-1.5">
-                           <div className="flex items-center gap-3 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
-                             <button onClick={() => onUpdateQuantity(item.id, -1, item.selectedVariant?.id)} className="text-slate-300 hover:text-[#e91e63]"><i className="fa-solid fa-minus text-[8px]"></i></button>
-                             <span className="text-[11px] font-black w-3 text-center">{item.quantity}</span>
-                             <button onClick={() => onUpdateQuantity(item.id, 1, item.selectedVariant?.id)} className="text-slate-300 hover:text-[#e91e63]"><i className="fa-solid fa-plus text-[8px]"></i></button>
-                           </div>
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-xs font-black text-[#3d1a1a]">S/ {((item.selectedVariant?.price || item.price) * item.quantity).toFixed(2)}</p>
-                        <button onClick={() => onRemove(item.id, item.selectedVariant?.id)} className="text-[9px] font-black text-red-300 uppercase mt-1">Quitar</button>
-                      </div>
-                    </div>
-                  ))
-                )}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
+              
+              {/* Modalidad de entrega */}
+              <div className="bg-[#fdf2f5] p-1 rounded-2xl flex items-center border border-[#e51d5a]/25">
+                <button
+                  type="button"
+                  onClick={() => onToggleModality('delivery')}
+                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    modality === 'delivery'
+                      ? 'bg-[#e51d5a] text-white shadow-xs'
+                      : 'text-[#e51d5a]/80 hover:text-[#e51d5a]'
+                  }`}
+                >
+                  <Bike className="w-3.5 h-3.5" />
+                  <span>Delivery</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onToggleModality('pickup')}
+                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    modality === 'pickup'
+                      ? 'bg-[#e51d5a] text-white shadow-xs'
+                      : 'text-[#e51d5a]/80 hover:text-[#e51d5a]'
+                  }`}
+                >
+                  <Store className="w-3.5 h-3.5" />
+                  <span>Retiro en Local</span>
+                </button>
               </div>
 
-              <div className="p-6 pt-2 bg-white/50 space-y-6">
-                <div className="flex bg-[#f8eded] p-1.5 rounded-2xl gap-1 border border-[#e91e63]/5">
-                  <button onClick={() => setOrderType('pickup')} className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${orderType === 'pickup' ? 'bg-[#e91e63] text-white shadow-md' : 'text-[#e91e63]/40'}`}>RECOJO</button>
-                  <button onClick={() => setOrderType('delivery')} className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${orderType === 'delivery' ? 'bg-[#e91e63] text-white shadow-md' : 'text-[#e91e63]/40'}`}>DELIVERY</button>
+              {/* Lista de Items */}
+              {items.length === 0 ? (
+                <div className="py-16 text-center text-slate-400">
+                  <ShoppingBag className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                  <p className="text-xs font-bold">Tu carrito está vacío</p>
+                  <p className="text-[11px] mt-1">Agrega tus sánguches y combos favoritos</p>
                 </div>
-
+              ) : (
                 <div className="space-y-3">
-                  <input type="text" placeholder="TU NOMBRE COMPLETO" className="w-full bg-white border border-[#e91e63]/5 py-4 px-6 rounded-2xl text-[10px] font-black outline-none focus:ring-2 focus:ring-[#e91e63]/20 uppercase tracking-widest shadow-sm" value={customerName} onChange={e => setCustomerName(e.target.value)} />
-                  <input type="tel" placeholder="NÚMERO DE TELÉFONO" className="w-full bg-white border border-[#e91e63]/5 py-4 px-6 rounded-2xl text-[10px] font-black outline-none focus:ring-2 focus:ring-[#e91e63]/20 uppercase tracking-widest shadow-sm" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} />
-                  {orderType === 'delivery' && (
-                    <input type="text" placeholder="DIRECCIÓN DE ENTREGA" className="w-full bg-white border border-[#e91e63]/5 py-4 px-6 rounded-2xl text-[10px] font-black outline-none focus:ring-2 focus:ring-[#e91e63]/20 uppercase tracking-widest shadow-sm animate-fade-in" value={address} onChange={e => setAddress(e.target.value)} />
+                  {items.map(item => {
+                    const price = item.selectedVariant ? item.selectedVariant.price : item.price;
+                    return (
+                      <div
+                        key={item.cartItemId}
+                        className="bg-white rounded-2xl p-3 border border-slate-200 shadow-xs flex gap-3 relative"
+                      >
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-16 h-16 rounded-xl object-cover shrink-0 bg-neutral-100"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-xs font-bold text-slate-900 truncate">
+                            {item.name}
+                          </h4>
+                          {item.selectedVariant && (
+                            <p className="text-[10px] font-semibold text-[#e51d5a]">
+                              {item.selectedVariant.name}
+                            </p>
+                          )}
+                          {item.selectedSauces && item.selectedSauces.length > 0 && (
+                            <p className="text-[10px] text-slate-500 truncate mt-0.5">
+                              {item.selectedSauces.join(', ')}
+                            </p>
+                          )}
+                          {item.specialInstructions && (
+                            <p className="text-[10px] text-slate-400 italic truncate">
+                              "{item.specialInstructions}"
+                            </p>
+                          )}
+
+                          <div className="flex items-center justify-between mt-2">
+                            <span className="text-xs font-black text-[#e51d5a]">
+                              S/ {(price * item.quantity).toFixed(2)}
+                            </span>
+
+                            {/* Controles de Cantidad */}
+                            <div className="flex items-center gap-2 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                              <button
+                                onClick={() => onUpdateQuantity(item.cartItemId, -1)}
+                                className="w-5 h-5 rounded-full bg-white text-slate-700 flex items-center justify-center hover:bg-slate-50"
+                              >
+                                <Minus className="w-2.5 h-2.5" />
+                              </button>
+                              <span className="text-xs font-bold w-4 text-center">
+                                {item.quantity}
+                              </span>
+                              <button
+                                onClick={() => onUpdateQuantity(item.cartItemId, 1)}
+                                className="w-5 h-5 rounded-full bg-white text-slate-700 flex items-center justify-center hover:bg-slate-50"
+                              >
+                                <Plus className="w-2.5 h-2.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => onRemove(item.cartItemId)}
+                          className="text-slate-300 hover:text-rose-500 transition-colors p-1"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Formulario de Entrega */}
+              {items.length > 0 && (
+                <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2.5 mt-4">
+                  <span className="text-[11px] font-bold text-slate-700 block uppercase tracking-wider">
+                    Datos del Pedido
+                  </span>
+
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="Tu nombre completo *"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      className="w-full px-3 py-2 text-xs rounded-xl bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-[#e51d5a]"
+                    />
+                  </div>
+
+                  <div>
+                    <input
+                      type="tel"
+                      placeholder="Número de celular WhatsApp *"
+                      value={customerPhone}
+                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      className="w-full px-3 py-2 text-xs rounded-xl bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-[#e51d5a]"
+                    />
+                  </div>
+
+                  {modality === 'delivery' && (
+                    <>
+                      <div>
+                        <input
+                          type="text"
+                          placeholder="Dirección de entrega *"
+                          value={address}
+                          onChange={(e) => setAddress(e.target.value)}
+                          className="w-full px-3 py-2 text-xs rounded-xl bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-[#e51d5a]"
+                        />
+                      </div>
+                      <div>
+                        <input
+                          type="text"
+                          placeholder="Referencia (ej. frente al parque, portón blanco)"
+                          value={reference}
+                          onChange={(e) => setReference(e.target.value)}
+                          className="w-full px-3 py-2 text-xs rounded-xl bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-[#e51d5a]"
+                        />
+                      </div>
+                    </>
                   )}
                 </div>
+              )}
 
-                {items.length > 0 && isFormComplete && (
-                  <div className="animate-fade-in">
-                    <div className={`p-5 rounded-[2.5rem] border-2 transition-all duration-500 ${hasCopied ? 'bg-green-50 border-green-200' : 'bg-[#fdd835]/10 border-dashed border-[#fdd835]'}`}>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className={`text-[9px] font-black uppercase tracking-widest ${hasCopied ? 'text-green-600' : 'text-[#3d1a1a]/60'}`}>{hasCopied ? '✓ NÚMERO COPIADO' : '🔥 PASO 1: COPIA EL NÚMERO'}</span>
-                        {hasCopied && <i className="fa-solid fa-circle-check text-green-500 text-lg"></i>}
-                      </div>
-                      <p className="text-[10px] font-bold text-[#3d1a1a]/70 leading-snug mb-4">Toca el número abajo para copiarlo, realiza el Yape/Plin y luego dale clic al botón rosa:</p>
-                      <button onClick={handleCopyNumber} className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all active:scale-95 ${hasCopied ? 'bg-green-500 text-white' : 'bg-white text-[#e91e63] border border-[#e91e63]/10 shadow-sm animate-pulse'}`}>
-                        <div className="flex items-center gap-3">
-                          <i className={`fa-solid ${hasCopied ? 'fa-check-double' : 'fa-copy'} text-lg`}></i>
-                          <span className="text-xl font-black tracking-widest">{whatsappNumber.replace(/\D/g, '')}</span>
-                        </div>
-                        <span className="text-[9px] font-black uppercase tracking-widest">{hasCopied ? '¡LISTO!' : 'TOCA AQUÍ'}</span>
-                      </button>
-                    </div>
+              {/* Pago Yape / Plin */}
+              {items.length > 0 && (
+                <div className="bg-[#fdf2f5] p-3.5 rounded-2xl border border-[#e51d5a]/25 text-xs">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="font-extrabold text-[#e51d5a]">
+                      Paga Fácil con Yape o Plin
+                    </span>
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md font-bold">
+                      Aceptado
+                    </span>
                   </div>
-                )}
-                <div className="h-4"></div>
-              </div>
+                  <p className="text-[11px] text-slate-600 mb-2">
+                    Toca para copiar el número y realiza tu pago:
+                  </p>
+                  <button
+                    onClick={handleCopyPayment}
+                    className="w-full py-2.5 px-3 bg-white rounded-xl border border-[#e51d5a]/25 flex items-center justify-between text-[#e51d5a] font-black text-sm hover:bg-[#fdf2f5] active:scale-98 transition-all"
+                  >
+                    <span>{cleanWhatsappNumber}</span>
+                    <span className="flex items-center gap-1 text-xs font-bold text-slate-500">
+                      {hasCopiedPayment ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          <span className="text-emerald-600">¡Copiado!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>Copiar</span>
+                        </>
+                      )}
+                    </span>
+                  </button>
+                </div>
+              )}
+
             </div>
 
-            <div className="shrink-0 p-6 md:p-8 bg-white border-t border-[#e91e63]/10 shadow-[0_-20px_50px_rgba(0,0,0,0.1)] z-20">
-              <div className="flex justify-between items-end mb-4">
-                <div>
-                  <span className="text-[10px] font-black text-[#e91e63]/40 uppercase tracking-widest block mb-0.5">Total a Pagar</span>
-                  <span className="text-3xl font-black text-[#e91e63] brand-font tracking-tighter">S/ {total.toFixed(2)}</span>
+            {/* Footer con Resumen y Botón de Enviar Pedido */}
+            {items.length > 0 && (
+              <div className="p-4 bg-white border-t border-slate-100 space-y-3">
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between text-base font-black text-slate-900 pt-1 border-t border-slate-100">
+                    <span>Total a Pagar</span>
+                    <span className="text-[#e51d5a]">S/ {total.toFixed(2)}</span>
+                  </div>
                 </div>
-                <div className="text-right">
-                   <p className="text-[9px] font-black text-[#3d1a1a]/30 uppercase tracking-[0.2em]">Puesto 651</p>
-                </div>
-              </div>
 
-              <button 
-                disabled={!isFormComplete || items.length === 0 || isSaving || !hasCopied} 
-                onClick={handleWhatsAppOrder}
-                className={`w-full py-6 md:py-7 rounded-[2.5rem] text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl transition-all flex items-center justify-center gap-4 ${!hasCopied ? 'bg-slate-100 text-slate-300' : 'bg-[#e91e63] text-white shadow-pink-200 active:scale-[0.97]'} disabled:opacity-80`}
-              >
-                {isSaving ? <i className="fa-solid fa-spinner fa-spin text-lg"></i> : <><i className="fa-brands fa-whatsapp text-lg ${hasCopied ? 'animate-bounce' : ''}"></i><span>{hasCopied ? 'PASO 2: ¡PEDIR AHORA!' : 'COPIA EL NÚMERO ARRIBA'}</span></>}
-              </button>
-            </div>
+                <button
+                  id="checkout-whatsapp-btn"
+                  onClick={handleSendOrder}
+                  className="w-full py-3.5 px-5 bg-[#e51d5a] hover:bg-[#cf154e] text-white rounded-2xl font-extrabold text-xs uppercase tracking-wider shadow-lg active:scale-98 transition-all flex items-center justify-center gap-2"
+                >
+                  <span>Enviar Pedido por WhatsApp</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </>
         )}
+
       </div>
-      
-      <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(233, 30, 99, 0.1); border-radius: 10px; }
-      `}</style>
     </div>
   );
 };

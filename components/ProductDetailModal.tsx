@@ -1,24 +1,44 @@
-
 import React, { useState, useEffect } from 'react';
+import { X, Minus, Plus, Check } from 'lucide-react';
 import { MenuItem, ItemVariant } from '../types';
 
 interface ProductDetailModalProps {
   item: MenuItem | null;
   onClose: () => void;
-  onAddToCart: (item: MenuItem, selectedVariant: ItemVariant | undefined, quantity: number) => void;
+  onAddToCart: (
+    item: MenuItem,
+    selectedVariant: ItemVariant | undefined,
+    quantity: number,
+    selectedSauces: string[],
+    instructions: string
+  ) => void;
 }
 
-export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({ item, onClose, onAddToCart }) => {
+export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
+  item,
+  onClose,
+  onAddToCart
+}) => {
   const [selectedVariant, setSelectedVariant] = useState<ItemVariant | undefined>(undefined);
   const [quantity, setQuantity] = useState(1);
+  const [selectedSauces, setSelectedSauces] = useState<string[]>([]);
+  const [specialInstructions, setSpecialInstructions] = useState('');
 
   useEffect(() => {
-    if (item && item.variants && item.variants.length > 0) {
-      setSelectedVariant(item.variants[0]);
-    } else {
-      setSelectedVariant(undefined);
+    if (item) {
+      if (item.variants && item.variants.length > 0) {
+        setSelectedVariant(item.variants[0]);
+      } else {
+        setSelectedVariant(undefined);
+      }
+      if (item.availableSauces && item.availableSauces.length > 0) {
+        setSelectedSauces(item.availableSauces.slice(0, 2));
+      } else {
+        setSelectedSauces(['Salsa Chimichurri Especial 🌿', 'Mayonesa al Ajo 🧄']);
+      }
+      setQuantity(1);
+      setSpecialInstructions('');
     }
-    setQuantity(1); // Reiniciar cantidad al cambiar de item
   }, [item]);
 
   if (!item) return null;
@@ -26,110 +46,190 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({ item, on
   const unitPrice = selectedVariant ? selectedVariant.price : item.price;
   const totalPrice = unitPrice * quantity;
 
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-0 md:p-4 animate-fade-in" onClick={onClose}>
-      <div className="absolute inset-0 bg-[#3d1a1a]/60 backdrop-blur-md"></div>
-      
-      <div 
-        className="relative bg-white w-full max-w-5xl h-full md:h-auto md:max-h-[90vh] md:rounded-[3rem] overflow-hidden flex flex-col md:flex-row shadow-2xl animate-zoom-in"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button 
-          onClick={onClose} 
-          className="absolute top-4 right-4 z-[210] w-10 h-10 bg-white text-[#e91e63] rounded-full flex items-center justify-center shadow-xl hover:scale-110 active:scale-95 transition-all"
-        >
-          <i className="fa-solid fa-xmark text-lg"></i>
-        </button>
+  const toggleSauce = (sauce: string) => {
+    setSelectedSauces(prev =>
+      prev.includes(sauce) ? prev.filter(s => s !== sauce) : [...prev, sauce]
+    );
+  };
 
-        {/* Imagen del Producto - Reducida en móvil */}
-        <div className="w-full md:w-1/2 h-[35vh] md:h-auto bg-pink-50 relative">
-          <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-          {item.isPopular && (
-            <div className="absolute bottom-4 left-4">
-               <span className="bg-[#fdd835] text-black text-[9px] font-black uppercase px-3 py-1.5 rounded-lg shadow-lg border-2 border-white">🔥 Recomendado</span>
+  const handleAdd = () => {
+    onAddToCart(item, selectedVariant, quantity, selectedSauces, specialInstructions);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+        onClick={onClose}
+      ></div>
+
+      {/* Modal Card */}
+      <div className="relative bg-white w-full max-w-md max-h-[85vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden z-10 animate-fade-fast">
+        
+        {/* Imagen Superior con Botón X y Badge */}
+        <div className="relative aspect-[21/9] w-full shrink-0 bg-neutral-100">
+          <img
+            src={item.image}
+            alt={item.name}
+            className="w-full h-full object-cover"
+          />
+          <button
+            id="close-detail-modal-btn"
+            onClick={onClose}
+            className="absolute top-2.5 right-2.5 w-7 h-7 rounded-full bg-white/90 backdrop-blur-xs text-slate-700 hover:text-black flex items-center justify-center shadow-md transition-transform hover:scale-110 active:scale-95"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+
+          {item.badge && (
+            <div className="absolute bottom-2 left-2 bg-[#e51d5a] text-white text-[9px] font-black px-2.5 py-0.5 rounded-full shadow-md flex items-center gap-1">
+              <span>{item.badge}</span>
             </div>
           )}
         </div>
 
-        {/* Contenido del Producto - Más compacto */}
-        <div className="w-full md:w-1/2 flex flex-col bg-white overflow-y-auto custom-scrollbar">
-          <div className="p-6 md:p-10 flex-1">
-            <span className="text-[9px] font-black uppercase tracking-[0.4em] text-[#e91e63]/30 mb-2 block">Detalle Malcriado</span>
-            <h2 className="brand-font text-3xl md:text-4xl font-bold text-[#3d1a1a] mb-3 leading-tight">
-              {item.name}
-            </h2>
-            <div className="h-1 w-12 bg-[#fdd835] mb-6 rounded-full"></div>
-            
-            {/* Sección de Descripción Compacta */}
-            <div className="mb-6">
-              <h4 className="text-[9px] font-black uppercase text-[#e91e63] tracking-widest mb-2">Sobre esta delicia:</h4>
-              <p className="text-[#3d1a1a]/70 text-sm md:text-base leading-relaxed font-medium">
+        {/* Contenido Scrollable */}
+        <div className="p-4 overflow-y-auto custom-scrollbar flex-1 space-y-3.5">
+          
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 className="brand-font text-lg sm:text-xl font-black text-slate-900 leading-tight">
+                {item.name}
+              </h3>
+              <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
                 {item.description}
               </p>
             </div>
+            <div className="text-right shrink-0">
+              <span className="brand-font text-lg font-black text-[#e51d5a]">
+                S/ {unitPrice.toFixed(2)}
+              </span>
+            </div>
+          </div>
 
-            {/* Variantes (si existen) - Diseño más apretado */}
-            {item.variants && item.variants.length > 0 && (
-              <div className="mb-6 space-y-3">
-                <label className="text-[9px] font-black uppercase text-[#e91e63] tracking-widest ml-1">Selecciona el tamaño / combo:</label>
-                <div className="grid grid-cols-1 gap-2">
-                  {item.variants.map((v) => (
-                    <button 
-                      key={v.id} 
-                      onClick={() => setSelectedVariant(v)} 
-                      className={`flex justify-between items-center p-4 rounded-2xl border-2 transition-all ${selectedVariant?.id === v.id ? 'border-[#e91e63] bg-pink-50' : 'border-[#f8eded] text-[#3d1a1a]/40 hover:border-pink-50 hover:bg-slate-50'}`}
+          {item.variants && item.variants.length > 0 && (
+            <div>
+              <label className="block text-[11px] font-bold text-slate-800 mb-1.5">
+                Selecciona la opción / tamaño:
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                {item.variants.map(variant => {
+                  const isSelected = selectedVariant?.id === variant.id;
+                  return (
+                    <button
+                      key={variant.id}
+                      type="button"
+                      onClick={() => setSelectedVariant(variant)}
+                      className={`p-2.5 rounded-xl text-left border text-[11px] font-semibold flex items-center justify-between transition-all ${
+                        isSelected
+                          ? 'border-[#e51d5a] bg-[#fdf2f5] text-[#e51d5a] shadow-xs'
+                          : 'border-slate-200 text-slate-700 hover:border-[#e51d5a]/30'
+                      }`}
                     >
-                      <span className="text-[10px] font-black uppercase tracking-widest">{v.name}</span>
-                      <span className="text-xs font-black">S/ {v.price.toFixed(2)}</span>
+                      <span className="truncate pr-2">{variant.name}</span>
+                      <span className="font-extrabold text-[#e51d5a] shrink-0">
+                        S/ {variant.price.toFixed(2)}
+                      </span>
                     </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Selector de Cantidad - Más esbelto */}
-            <div className="mb-6">
-              <h4 className="text-[9px] font-black uppercase text-[#e91e63] tracking-widest mb-3">¿Cuántos vas a querer?</h4>
-              <div className="flex items-center gap-4 bg-slate-50 w-fit p-2 rounded-2xl border border-slate-100">
-                <button 
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="w-10 h-10 bg-white text-[#e91e63] rounded-xl flex items-center justify-center shadow-sm hover:scale-105 active:scale-90 transition-all border border-slate-100"
-                >
-                  <i className="fa-solid fa-minus text-xs"></i>
-                </button>
-                <span className="text-xl font-black brand-font w-6 text-center text-[#3d1a1a]">{quantity}</span>
-                <button 
-                  onClick={() => setQuantity(quantity + 1)}
-                  className="w-10 h-10 bg-white text-[#e91e63] rounded-xl flex items-center justify-center shadow-sm hover:scale-105 active:scale-90 transition-all border border-slate-100"
-                >
-                  <i className="fa-solid fa-plus text-xs"></i>
-                </button>
+                  );
+                })}
               </div>
             </div>
-            
-            {item.note && (
-              <div className="p-4 bg-[#fdd835]/10 border border-[#fdd835]/30 rounded-2xl flex items-center gap-3 mb-2">
-                 <i className="fa-solid fa-circle-info text-[#fdd835] text-lg"></i>
-                 <p className="text-[9px] font-black uppercase text-[#3d1a1a]/60 leading-tight">{item.note}</p>
+          )}
+
+          {item.availableSauces && item.availableSauces.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-[11px] font-bold text-slate-800">
+                  Cremas y salsas de la casa:
+                </label>
+                <span className="text-[9px] text-slate-400 font-medium">Elige tus favoritas</span>
               </div>
-            )}
+              <div className="flex flex-wrap gap-1.5">
+                {item.availableSauces.map(sauce => {
+                  const isChecked = selectedSauces.includes(sauce);
+                  return (
+                    <button
+                      key={sauce}
+                      type="button"
+                      onClick={() => toggleSauce(sauce)}
+                      className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all flex items-center gap-1 ${
+                        isChecked
+                          ? 'bg-[#e51d5a] text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-transparent'
+                      }`}
+                    >
+                      {isChecked && <Check className="w-3 h-3 text-white" />}
+                      <span>{sauce}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[11px] font-bold text-slate-800">
+                Instrucciones (Opcional):
+              </label>
+              <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md">
+                Gratis
+              </span>
+            </div>
+            <textarea
+              rows={2}
+              value={specialInstructions}
+              onChange={(e) => setSpecialInstructions(e.target.value)}
+              placeholder="Ej. bien tostado, sin cebolla..."
+              className="w-full p-2.5 rounded-xl border border-slate-200 text-[11px] text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-[#e51d5a] focus:ring-2 focus:ring-[#e51d5a]/10 resize-none"
+            />
           </div>
 
-          {/* Footer del Modal - Más apretado contra el contenido */}
-          <div className="p-6 md:px-10 md:py-8 border-t border-[#f8eded] flex flex-row items-center gap-6 bg-[#f8eded]/30">
-            <div className="flex flex-col">
-              <span className="text-[#3d1a1a]/30 text-[9px] font-black uppercase tracking-widest">Inversión Total</span>
-              <span className="text-3xl font-black text-[#e91e63] brand-font tracking-tighter">S/ {totalPrice.toFixed(2)}</span>
+          <div className="flex items-center justify-between pt-1">
+            <span className="text-[11px] font-bold text-slate-800">
+              Cantidad:
+            </span>
+            <div className="flex items-center gap-2.5 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
+              <button
+                type="button"
+                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                className="w-6 h-6 rounded-full bg-white text-[#e51d5a] flex items-center justify-center hover:bg-slate-50 active:scale-95 shadow-xs"
+              >
+                <Minus className="w-3 h-3" />
+              </button>
+              <span className="font-extrabold text-xs text-slate-900 w-4 text-center">
+                {quantity}
+              </span>
+              <button
+                type="button"
+                onClick={() => setQuantity(quantity + 1)}
+                className="w-6 h-6 rounded-full bg-white text-[#e51d5a] flex items-center justify-center hover:bg-slate-50 active:scale-95 shadow-xs"
+              >
+                <Plus className="w-3 h-3" />
+              </button>
             </div>
-            <button 
-              onClick={() => { onAddToCart(item, selectedVariant, quantity); onClose(); }} 
-              className="flex-1 bg-[#e91e63] text-white py-5 rounded-2xl brand-font font-bold uppercase tracking-[0.15em] text-xs shadow-xl shadow-pink-200 active:scale-95 transition-all flex items-center justify-center gap-3 hover:brightness-110"
-            >
-              <i className="fa-solid fa-cart-plus text-base"></i>
-              <span>¡Al Carro!</span>
-            </button>
           </div>
+
         </div>
+
+        {/* Botón Pegajoso "Agregar al Carrito" */}
+        <div className="p-3 bg-white border-t border-slate-100 shrink-0">
+          <button
+            id="add-to-cart-submit-btn"
+            type="button"
+            onClick={handleAdd}
+            className="w-full py-3 px-4 bg-[#e51d5a] hover:bg-[#cf154e] text-white rounded-xl font-extrabold text-xs transition-all shadow-[0_4px_16px_rgba(229,29,90,0.25)] active:scale-98 flex items-center justify-between"
+          >
+            <span className="tracking-wide">Agregar al Carrito</span>
+            <span className="bg-white/20 backdrop-blur-xs px-2.5 py-0.5 rounded-lg text-[11px] font-black">
+              S/ {totalPrice.toFixed(2)}
+            </span>
+          </button>
+        </div>
+
       </div>
     </div>
   );

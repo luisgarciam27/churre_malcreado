@@ -1,45 +1,87 @@
-
+import React from 'react';
+import { Plus, Heart } from 'lucide-react';
 import { MenuItem } from '../types';
-import React, { useState } from 'react';
 
 interface MenuItemCardProps {
   item: MenuItem;
-  onAddToCart: (item: MenuItem, event: React.MouseEvent) => void;
-  onShowDetails: () => void;
+  onSelectItem: (item: MenuItem) => void;
+  onQuickAdd: (item: MenuItem, e: React.MouseEvent) => void;
+  onToggleFavorite: (item: MenuItem) => void;
+  isFavorite: boolean;
 }
 
-export const MenuItemCard: React.FC<MenuItemCardProps> = ({ item, onAddToCart, onShowDetails }) => {
-  const [isLoaded, setIsLoaded] = useState(false);
-
+export const MenuItemCard: React.FC<MenuItemCardProps> = ({
+  item,
+  onSelectItem,
+  onQuickAdd,
+  onToggleFavorite,
+  isFavorite
+}) => {
   return (
-    <div 
-      onClick={onShowDetails}
-      className="product-card group bg-white rounded-[2rem] overflow-hidden shadow-sm hover:shadow-2xl flex flex-col border border-white"
+    <div
+      onClick={() => onSelectItem(item)}
+      className="group bg-white rounded-3xl border border-neutral-200/80 shadow-xs hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col cursor-pointer relative active:scale-[0.98]"
     >
-      <div className="relative aspect-square overflow-hidden bg-pink-50/30">
-        <img 
-          src={item.image} 
-          alt={item.name} 
-          onLoad={() => setIsLoaded(true)}
-          className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+      {/* Imagen & Badges */}
+      <div className="relative aspect-[4/3] w-full bg-neutral-100 overflow-hidden">
+        <img
+          src={item.image}
+          alt={item.name}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          loading="lazy"
         />
-        {item.isPopular && (
-          <div className="absolute top-3 right-3">
-             <span className="bg-[#fdd835] text-black text-[9px] font-black uppercase px-3 py-1.5 rounded-xl shadow-lg border-2 border-white">🔥 Malcriado</span>
+
+        {/* Badge superior si existe */}
+        {item.badge && (
+          <div className="absolute top-2.5 left-2.5 bg-neutral-900/80 backdrop-blur-xs text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-sm">
+            {item.badge}
           </div>
         )}
+
+        {/* Botón de Favorito */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleFavorite(item);
+          }}
+          className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-90 shadow-sm ${
+            isFavorite
+              ? 'bg-[#e51d5a] text-white'
+              : 'bg-white/80 text-neutral-600 hover:text-[#e51d5a]'
+          }`}
+          title="Favorito"
+        >
+          <Heart className={`w-4 h-4 ${isFavorite ? 'fill-white' : ''}`} />
+        </button>
       </div>
 
-      <div className="p-5 flex flex-col flex-1">
-        <div className="mb-2">
-           <span className="text-[9px] font-black uppercase text-[#e91e63]/30 tracking-widest">{item.category}</span>
-           <h3 className="brand-font text-sm font-bold text-[#3d1a1a] leading-tight line-clamp-2 h-9 flex items-center">{item.name}</h3>
+      {/* Contenido */}
+      <div className="p-3.5 flex flex-col flex-1 justify-between">
+        <div>
+          <h4 className="brand-font text-sm font-bold text-neutral-900 group-hover:text-[#e51d5a] transition-colors line-clamp-1">
+            {item.name}
+          </h4>
+          <p className="text-[11px] text-neutral-500 line-clamp-2 mt-1 leading-relaxed">
+            {item.description}
+          </p>
         </div>
-        <div className="mt-auto flex justify-between items-center pt-3 border-t border-[#f8eded]">
-          <span className="text-lg font-black text-[#e91e63] brand-font tracking-tighter">S/ {item.price.toFixed(2)}</span>
-          <div className="w-8 h-8 rounded-full bg-[#f8eded] text-[#e91e63] flex items-center justify-center group-hover:bg-[#e91e63] group-hover:text-white transition-all shadow-inner">
-             <i className="fa-solid fa-plus text-[10px]"></i>
+
+        {/* Precio & Botón Agregar */}
+        <div className="mt-3 pt-2.5 border-t border-neutral-100 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold text-neutral-400 block uppercase">Precio</span>
+            <span className="brand-font text-base font-black text-[#e51d5a]">
+              S/ {item.price.toFixed(2)}
+            </span>
           </div>
+
+          <button
+            onClick={(e) => onQuickAdd(item, e)}
+            className="w-8 h-8 rounded-2xl bg-[#fdf2f5] hover:bg-[#e51d5a] text-[#e51d5a] hover:text-white flex items-center justify-center transition-all shadow-xs active:scale-90"
+            title="Agregar"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </div>
